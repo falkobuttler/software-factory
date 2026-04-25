@@ -30,8 +30,9 @@ jobs:
       issue_number: ${{ github.event.issue.number }}
       target_repo: ${{ github.repository }}
       comment_body: ${{ github.event.comment.body || '' }}
-      # Replace with your GitHub App's bot login (found on the App's settings page)
-      bot_login: "your-app-name[bot]"
+      # GitHub App bot login: the app's URL slug + "[bot]"
+      # Find it at: github.com/settings/apps/YOUR-SLUG → bot login = YOUR-SLUG[bot]
+      bot_login: "falko-s-software-factory[bot]"
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
