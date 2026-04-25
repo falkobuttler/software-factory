@@ -88,11 +88,12 @@ run_claude() {
   local max_turns="${2:-500}"
 
   ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+    stdbuf -oL -eL \
     claude --print \
     --max-turns "$max_turns" \
     --allowedTools "Bash,Read,Write,Edit,Glob,Grep,LS" \
     < "$prompt_file" \
-    2>&1 | tee "$CLAUDE_OUTPUT_FILE"
+    2>&1 | stdbuf -oL tee "$CLAUDE_OUTPUT_FILE"
 
   return "${PIPESTATUS[0]}"
 }
