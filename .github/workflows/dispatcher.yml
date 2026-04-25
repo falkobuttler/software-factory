@@ -1,0 +1,112 @@
+name: Software Factory Dispatcher
+
+# Called by target repos via workflow_call.
+# All pipeline logic lives here — target repos have a thin wrapper only.
+# Assignee verification and state routing happen inside pipeline.sh.
+
+on:
+  workflow_call:
+    inputs:
+      event_name:
+        description: "GitHub event name (issues or issue_comment)"
+        type: string
+        required: true
+      event_action:
+        description: "GitHub event action (assigned, created, etc.)"
+        type: string
+        required: true
+      issue_number:
+        description: "Issue number to work on"
+        type: number
+        required: true
+      target_repo:
+        description: "Target repository in owner/repo format"
+        type: string
+        required: true
+      comment_body:
+        description: "Body of the triggering comment (empty for non-comment events)"
+        type: string
+        required: false
+        default: ""
+      bot_login:
+        description: "GitHub login of the bot account that triggers the workflow"
+        type: string
+        required: true
+    secrets:
+      GITHUB_APP_ID:
+        required: true
+      GITHUB_APP_PRIVATE_KEY:
+        required: true
+      ANTHROPIC_API_KEY:
+        required: true
+
+jobs:
+  factory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      contents: read
+    steps:
+      - name: Parse repository names
+        id: parse
+        run: |
+          # Factory repo: extract from workflow_ref ("owner/repo/.github/workflows/file@ref")
+          WORKFLOW_REF="${{ github.workflow_ref }}"
+          FACTORY_REPO="$(echo "$WORKFLOW_REF" | sed 's|/.github/workflows/.*||')"
+          FACTORY_REF="$(echo "$WORKFLOW_REF" | grep -oP '(?<=@).*' | sed 's|refs/heads/||; s|refs/tags/||')"
+
+          # Target repo owner (for App token scoping)
+          TARGET_OWNER="$(echo "${{ inputs.target_repo }}" | cut -d'/' -f1)"
+
+          echo "factory_repo=$FACTORY_REPO" >> "$GITHUB_OUTPUT"
+          echo "factory_ref=$FACTORY_REF"   >> "$GITHUB_OUTPUT"
+          echo "target_owner=$TARGET_OWNER" >> "$GITHUB_OUTPUT"
+
+      - name: Generate GitHub App token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.GITHUB_APP_ID }}
+          private-key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ steps.parse.outputs.target_owner }}
+          # Omitting repositories grants access to all repos the App is installed on in the org
+
+      - name: Check out factory repo (scripts + prompts)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.parse.outputs.factory_repo }}
+          ref: ${{ steps.parse.outputs.factory_ref }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: factory
+
+      - name: Check out target repo (code to work on)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target_repo }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: target
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run factory pipeline
+        env:
+          TARGET_REPO: ${{ inputs.target_repo }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          EVENT_NAME: ${{ inputs.event_name }}
+          EVENT_ACTION: ${{ inputs.event_action }}
+          COMMENT_BODY: ${{ inputs.comment_body }}
+          BOT_LOGIN: ${{ inputs.bot_login }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WORK_DIR: ${{ github.workspace }}/target
+          FACTORY_DIR: ${{ github.workspace }}/factory
+        run: |
+          chmod +x factory/scripts/pipeline.sh factory/scripts/state.sh
+          bash factory/scripts/pipeline.sh
