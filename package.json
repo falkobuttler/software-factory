@@ -1,0 +1,8 @@
+{
+  "name": "software-factory",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@anthropic-ai/claude-code": "latest"
+  }
+}
