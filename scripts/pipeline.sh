@@ -5,13 +5,13 @@
 #   TARGET_REPO       - "owner/repo" of the target repository
 #   ISSUE_NUMBER      - GitHub issue number to work on
 #   EVENT_NAME        - GitHub event: "issues" or "issue_comment"
-#   EVENT_ACTION      - GitHub action: "assigned" or "created"
+#   EVENT_ACTION      - GitHub action: "labeled" or "created"
+#   LABEL_NAME        - Name of the label added (for issues.labeled events)
 #   COMMENT_BODY      - Body of the triggering comment (empty for non-comment events)
 #   GH_TOKEN          - GitHub App installation token
 #   ANTHROPIC_API_KEY - Anthropic API key for Claude Code
 #   WORK_DIR          - Absolute path to checked-out target repo
 #   FACTORY_DIR       - Absolute path to checked-out factory repo
-#   BOT_LOGIN         - GitHub login of the bot account (e.g. "my-factory-bot[bot]")
 
 set -euo pipefail
 
@@ -442,15 +442,9 @@ main() {
   log "Event: ${EVENT_NAME}/${EVENT_ACTION}, State: ${current_state}, Issue: #${ISSUE_NUMBER}"
 
   case "${EVENT_NAME}/${EVENT_ACTION}/${current_state}" in
-    issues/assigned/new)
-      # Confirm the issue is actually assigned to the bot account
-      local assignees
-      assignees=$(gh issue view "$ISSUE_NUMBER" \
-        --repo "$TARGET_REPO" \
-        --json assignees \
-        --jq '[.assignees[].login] | join(",")')
-      if ! echo "$assignees" | grep -qF "$BOT_LOGIN"; then
-        log "Issue is not assigned to bot '$BOT_LOGIN' (assignees: $assignees). Skipping."
+    issues/labeled/new)
+      if [ "${LABEL_NAME}" != "ai-factory" ]; then
+        log "Label '${LABEL_NAME}' is not the factory trigger. Skipping."
         exit 0
       fi
       run_planner

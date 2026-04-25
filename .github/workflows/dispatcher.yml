@@ -2,7 +2,7 @@ name: Software Factory Dispatcher
 
 # Called by target repos via workflow_call.
 # All pipeline logic lives here — target repos have a thin wrapper only.
-# Assignee verification and state routing happen inside pipeline.sh.
+# Trigger: add the "ai-factory" label to any issue.
 
 on:
   workflow_call:
@@ -23,15 +23,16 @@ on:
         description: "Target repository in owner/repo format"
         type: string
         required: true
+      label_name:
+        description: "Name of the label that was added (for issues.labeled events)"
+        type: string
+        required: false
+        default: ""
       comment_body:
         description: "Body of the triggering comment (empty for non-comment events)"
         type: string
         required: false
         default: ""
-      bot_login:
-        description: "GitHub login of the bot account that triggers the workflow"
-        type: string
-        required: true
     secrets:
       APP_ID:
         required: true
@@ -101,8 +102,8 @@ jobs:
           ISSUE_NUMBER: ${{ inputs.issue_number }}
           EVENT_NAME: ${{ inputs.event_name }}
           EVENT_ACTION: ${{ inputs.event_action }}
+          LABEL_NAME: ${{ inputs.label_name }}
           COMMENT_BODY: ${{ inputs.comment_body }}
-          BOT_LOGIN: ${{ inputs.bot_login }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WORK_DIR: ${{ github.workspace }}/target

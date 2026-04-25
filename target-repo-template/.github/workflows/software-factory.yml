@@ -3,36 +3,36 @@ name: Software Factory
 # Thin trigger file — copy this into any repo you want the factory to manage.
 # All logic lives in the factory repo; this file just forwards events to it.
 #
+# Trigger: add the "ai-factory" label to any issue.
+#
 # Required secrets (set at repo or org level):
 #   APP_ID          — ID of the GitHub App
 #   APP_PRIVATE_KEY — Private key PEM of the GitHub App
-#   ANTHROPIC_API_KEY      — Anthropic API key
+#   ANTHROPIC_API_KEY — Anthropic API key
 
 on:
   issues:
-    types: [assigned]
+    types: [labeled]
   issue_comment:
     types: [created]
 
 jobs:
   dispatch:
-    # Only run if: issue assigned, or a HUMAN comment on an open issue
+    # Only run if: ai-factory label added, or a human comment on an open issue
     # Bot-authored comments are excluded to prevent infinite loops.
     if: |
-      github.event_name == 'issues' ||
+      (github.event_name == 'issues' && github.event.label.name == 'ai-factory') ||
       (github.event_name == 'issue_comment'
         && github.event.issue.state == 'open'
         && github.event.comment.user.type != 'Bot')
-    uses: YOUR_ORG/software-factory/.github/workflows/dispatcher.yml@main
+    uses: falkobuttler/software-factory/.github/workflows/dispatcher.yml@main
     with:
       event_name: ${{ github.event_name }}
       event_action: ${{ github.event.action }}
       issue_number: ${{ github.event.issue.number }}
       target_repo: ${{ github.repository }}
+      label_name: ${{ github.event.label.name || '' }}
       comment_body: ${{ github.event.comment.body || '' }}
-      # GitHub App bot login: the app's URL slug + "[bot]"
-      # Find it at: github.com/settings/apps/YOUR-SLUG → bot login = YOUR-SLUG[bot]
-      bot_login: "falko-s-software-factory[bot]"
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}

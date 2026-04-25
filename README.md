@@ -100,11 +100,12 @@ npm run lint
 
 ### 5. Use the factory
 
-Assign any GitHub issue to the bot account (`your-app-name[bot]`). The pipeline starts automatically.
+Add the **`ai-factory`** label to any issue. The pipeline starts automatically.
 
 #### Labels used
 | Label | Meaning |
 |---|---|
+| `ai-factory` | Trigger label — add this to start the pipeline |
 | `ai:planning` | Agent is planning the work |
 | `ai:questioning` | Agent has questions; waiting for answers |
 | `ai:implementing` | Agent is writing code |
