@@ -14,19 +14,19 @@ AI_LABELS=(
 )
 
 LABEL_COLORS=(
-  "ai:planning:0075ca"
-  "ai:questioning:e4e669"
-  "ai:implementing:d93f0b"
-  "ai:reviewing:0e8a16"
-  "ai:addressing-review:f9d0c4"
-  "ai:stuck:b60205"
-  "ai:done:0e8a16"
+  "ai:planning|0075ca"
+  "ai:questioning|e4e669"
+  "ai:implementing|d93f0b"
+  "ai:reviewing|0e8a16"
+  "ai:addressing-review|f9d0c4"
+  "ai:stuck|b60205"
+  "ai:done|0e8a16"
 )
 
 ensure_labels_exist() {
   for entry in "${LABEL_COLORS[@]}"; do
-    name="${entry%%:*}"
-    color="${entry##*:}"
+    name="${entry%|*}"
+    color="${entry#*|}"
     gh label create "$name" \
       --repo "$TARGET_REPO" \
       --color "$color" \
