@@ -108,7 +108,7 @@ run_claude() {
     --max-turns 50 \
     --allowedTools "Bash,Read,Write,Edit,Glob,Grep,LS" \
     $extra_args \
-    "$(cat "$prompt_file")"
+    < "$prompt_file"
 }
 
 # ─── Pipeline steps ─────────────────────────────────────────────────────────
