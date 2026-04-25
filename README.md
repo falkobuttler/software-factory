@@ -56,8 +56,8 @@ Add the following secrets. You can add them at the **organization level** (recom
 
 | Secret | Value |
 |---|---|
-| `GITHUB_APP_ID` | The App ID from step 1 |
-| `GITHUB_APP_PRIVATE_KEY` | The full contents of the `.pem` private key file |
+| `APP_ID` | The App ID from step 1 |
+| `APP_PRIVATE_KEY` | The full contents of the `.pem` private key file |
 | `ANTHROPIC_API_KEY` | Your Anthropic API key from console.anthropic.com |
 
 ### 4. Onboard a target repo

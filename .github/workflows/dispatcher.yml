@@ -33,9 +33,9 @@ on:
         type: string
         required: true
     secrets:
-      GITHUB_APP_ID:
+      APP_ID:
         required: true
-      GITHUB_APP_PRIVATE_KEY:
+      APP_PRIVATE_KEY:
         required: true
       ANTHROPIC_API_KEY:
         required: true
@@ -66,8 +66,8 @@ jobs:
         uses: actions/create-github-app-token@v1
         id: app-token
         with:
-          app-id: ${{ secrets.GITHUB_APP_ID }}
-          private-key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ steps.parse.outputs.target_owner }}
           # Omitting repositories grants access to all repos the App is installed on in the org
 

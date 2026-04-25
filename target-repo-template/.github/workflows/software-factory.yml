@@ -4,8 +4,8 @@ name: Software Factory
 # All logic lives in the factory repo; this file just forwards events to it.
 #
 # Required secrets (set at repo or org level):
-#   GITHUB_APP_ID          — ID of the GitHub App
-#   GITHUB_APP_PRIVATE_KEY — Private key PEM of the GitHub App
+#   APP_ID          — ID of the GitHub App
+#   APP_PRIVATE_KEY — Private key PEM of the GitHub App
 #   ANTHROPIC_API_KEY      — Anthropic API key
 
 on:
@@ -33,6 +33,6 @@ jobs:
       # Replace with your GitHub App's bot login (found on the App's settings page)
       bot_login: "your-app-name[bot]"
     secrets:
-      GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
-      GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+      APP_ID: ${{ secrets.APP_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
