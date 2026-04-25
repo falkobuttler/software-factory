@@ -56,10 +56,20 @@ case "${EVENT_NAME}/${EVENT_ACTION}" in
         echo "action=implement" >> "$GITHUB_OUTPUT"
         ;;
       *)
-        log "Comment received but no action needed in state '${current_state}'."
-        echo "action=noop" >> "$GITHUB_OUTPUT"
+        # Check if the comment is on a PR (ISSUE_NUMBER is the PR number for PR comments)
+        if gh pr view "$ISSUE_NUMBER" --repo "$TARGET_REPO" &>/dev/null 2>&1; then
+          log "Human comment on PR #${ISSUE_NUMBER}. Routing to address PR feedback."
+          echo "action=address-pr-feedback" >> "$GITHUB_OUTPUT"
+        else
+          log "Comment received but no action needed in state '${current_state}'."
+          echo "action=noop" >> "$GITHUB_OUTPUT"
+        fi
         ;;
     esac
+    ;;
+  pull_request_review/submitted)
+    log "PR review submitted. Routing to address PR feedback."
+    echo "action=address-pr-feedback" >> "$GITHUB_OUTPUT"
     ;;
   *)
     log "No action needed for this event/state combination."

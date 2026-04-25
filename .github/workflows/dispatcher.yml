@@ -133,16 +133,30 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: bash factory/scripts/implement.sh
 
-      # ── Stage 4: Review cycle ─────────────────────────────────────────────
-      - name: Review cycle
-        id: review
-        if: |
-          steps.route.outputs.action == 'review' ||
-          (steps.implement.outcome == 'success' && steps.implement.outputs.stuck != 'true')
+      # ── Stage 4a: Address human PR feedback ──────────────────────────────
+      - name: Address PR feedback
+        id: address_pr_feedback
+        if: steps.route.outputs.action == 'address-pr-feedback'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WORK_DIR: ${{ github.workspace }}/target
           FACTORY_DIR: ${{ github.workspace }}/factory
-          PR_NUMBER: ${{ steps.implement.outputs.pr_number }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bash factory/scripts/address-pr-feedback.sh
+
+      # ── Stage 4b: Review cycle ────────────────────────────────────────────
+      - name: Review cycle
+        id: review
+        if: |
+          steps.route.outputs.action == 'review' ||
+          (steps.implement.outcome == 'success' && steps.implement.outputs.stuck != 'true') ||
+          steps.address_pr_feedback.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WORK_DIR: ${{ github.workspace }}/target
+          FACTORY_DIR: ${{ github.workspace }}/factory
+          PR_NUMBER: ${{ steps.implement.outputs.pr_number || steps.address_pr_feedback.outputs.pr_number }}
         run: bash factory/scripts/review-cycle.sh
