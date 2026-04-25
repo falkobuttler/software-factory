@@ -12,7 +12,7 @@ on:
         type: string
         required: true
       event_action:
-        description: "GitHub event action (assigned, created, etc.)"
+        description: "GitHub event action (labeled, created, etc.)"
         type: string
         required: true
       issue_number:
@@ -40,6 +40,14 @@ on:
         required: true
       ANTHROPIC_API_KEY:
         required: true
+
+env:
+  TARGET_REPO: ${{ inputs.target_repo }}
+  ISSUE_NUMBER: ${{ inputs.issue_number }}
+  EVENT_NAME: ${{ inputs.event_name }}
+  EVENT_ACTION: ${{ inputs.event_action }}
+  LABEL_NAME: ${{ inputs.label_name }}
+  COMMENT_BODY: ${{ inputs.comment_body }}
 
 jobs:
   factory:
@@ -85,18 +93,55 @@ jobs:
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Run factory pipeline
+      # ── Stage 1: Route ────────────────────────────────────────────────────
+      - name: Route
+        id: route
         env:
-          TARGET_REPO: ${{ inputs.target_repo }}
-          ISSUE_NUMBER: ${{ inputs.issue_number }}
-          EVENT_NAME: ${{ inputs.event_name }}
-          EVENT_ACTION: ${{ inputs.event_action }}
-          LABEL_NAME: ${{ inputs.label_name }}
-          COMMENT_BODY: ${{ inputs.comment_body }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          WORK_DIR: ${{ github.workspace }}/target
+          FACTORY_DIR: ${{ github.workspace }}/factory
+        run: |
+          chmod +x factory/scripts/*.sh
+          bash factory/scripts/route.sh
+
+      # ── Stage 2: Plan ─────────────────────────────────────────────────────
+      - name: Plan
+        id: plan
+        if: |
+          steps.route.outputs.action == 'plan' ||
+          steps.route.outputs.action == 'resume-plan'
+        env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WORK_DIR: ${{ github.workspace }}/target
           FACTORY_DIR: ${{ github.workspace }}/factory
-        run: |
-          chmod +x factory/scripts/pipeline.sh factory/scripts/state.sh
-          bash factory/scripts/pipeline.sh
+        run: bash factory/scripts/plan.sh
+
+      # ── Stage 3: Implement ────────────────────────────────────────────────
+      - name: Implement
+        id: implement
+        if: |
+          (steps.plan.outcome == 'success' && steps.plan.outputs.has_questions != 'true') ||
+          (steps.plan.outcome == 'skipped' && steps.route.outputs.action == 'resume-stuck')
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WORK_DIR: ${{ github.workspace }}/target
+          FACTORY_DIR: ${{ github.workspace }}/factory
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bash factory/scripts/implement.sh
+
+      # ── Stage 4: Review cycle ─────────────────────────────────────────────
+      - name: Review cycle
+        id: review
+        if: |
+          steps.implement.outcome == 'success' &&
+          steps.implement.outputs.stuck != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WORK_DIR: ${{ github.workspace }}/target
+          FACTORY_DIR: ${{ github.workspace }}/factory
+          PR_NUMBER: ${{ steps.implement.outputs.pr_number }}
+        run: bash factory/scripts/review-cycle.sh
