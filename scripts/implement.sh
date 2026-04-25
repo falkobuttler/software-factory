@@ -109,6 +109,10 @@ else
   log "Changes committed and pushed to ${branch}."
 fi
 
+post_comment "## Implementation complete
+
+$(cat "$CLAUDE_OUTPUT_FILE")"
+
 # Open PR (idempotent)
 pr_number=$(get_pr_for_issue)
 if [ -z "$pr_number" ]; then

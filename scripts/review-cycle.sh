@@ -129,12 +129,13 @@ for round in $(seq 1 "$MAX_REVIEW_ROUNDS"); do
 
   if echo "$review_output" | grep -q "^LGTM"; then
     log "Review passed on round ${round}!"
-    post_pr_comment "$pr_number" "**Review passed** (round ${round}/${MAX_REVIEW_ROUNDS}) — marking PR ready for human review.
-
-${review_output}"
     gh pr ready "$pr_number" --repo "$TARGET_REPO"
     set_state "done"
-    post_comment "Implementation complete. PR #${pr_number} is ready for your review."
+    post_comment "## Review passed (round ${round}/${MAX_REVIEW_ROUNDS})
+
+${review_output}
+
+PR #${pr_number} is ready for your review."
     exit 0
   fi
 
