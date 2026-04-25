@@ -8,10 +8,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/state.sh"
 source "$SCRIPT_DIR/shared.sh"
 
-# ISSUE_NUMBER is the PR number in both triggering cases:
-#   pull_request_review → github.event.pull_request.number passed as issue_number
-#   issue_comment on PR → github.event.issue.number (PRs are issues)
-pr_number="$ISSUE_NUMBER"
+# EVENT_PR_NUMBER is set explicitly by the target workflow for all PR events.
+pr_number="${EVENT_PR_NUMBER:-}"
+if [ -z "$pr_number" ] || [ "$pr_number" = "0" ]; then
+  log "ERROR: EVENT_PR_NUMBER is not set. Cannot identify the PR."
+  exit 1
+fi
 log "Addressing human PR feedback on PR #${pr_number}..."
 
 # Derive the actual issue number from the PR branch (ai/issue-N-slug)

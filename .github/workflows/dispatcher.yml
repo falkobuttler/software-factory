@@ -33,6 +33,11 @@ on:
         type: string
         required: false
         default: ""
+      pr_number:
+        description: "PR number when the event is PR-related (pull_request_review or issue_comment on a PR)"
+        type: number
+        required: false
+        default: 0
     secrets:
       APP_ID:
         required: true
@@ -48,6 +53,7 @@ env:
   EVENT_ACTION: ${{ inputs.event_action }}
   LABEL_NAME: ${{ inputs.label_name }}
   COMMENT_BODY: ${{ inputs.comment_body }}
+  EVENT_PR_NUMBER: ${{ inputs.pr_number }}
 
 jobs:
   factory:

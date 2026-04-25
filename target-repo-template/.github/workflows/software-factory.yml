@@ -39,6 +39,9 @@ jobs:
       target_repo: ${{ github.repository }}
       label_name: ${{ github.event.label.name || '' }}
       comment_body: ${{ github.event.comment.body || github.event.review.body || '' }}
+      # Non-zero when the event is PR-related: PR review, or comment on a PR.
+      # github.event.issue.pull_request.url is populated by GitHub only for PR comments.
+      pr_number: ${{ github.event.pull_request.number || (github.event.issue.pull_request.url != '' && github.event.issue.number) || 0 }}
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
