@@ -119,7 +119,15 @@ if [ -z "$pr_number" ]; then
   pr_url=$(gh pr create \
     --repo "$TARGET_REPO" \
     --title "${issue_title}" \
-    --body "Closes #${ISSUE_NUMBER}
+    --body "## What
+
+${issue_body}
+
+## How
+
+${plan}
+
+Closes #${ISSUE_NUMBER}
 
 <!-- ai-review-round: 0 -->" \
     --head "$branch" \
