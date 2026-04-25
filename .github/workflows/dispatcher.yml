@@ -90,7 +90,7 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install Claude Code CLI
+      - name: Install Claude Code SDK
         run: npm install -g @anthropic-ai/claude-code
 
       # ── Stage 1: Route ────────────────────────────────────────────────────
