@@ -48,19 +48,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Parse repository names
+      - name: Parse target repo owner
         id: parse
         run: |
-          # Factory repo: extract from workflow_ref ("owner/repo/.github/workflows/file@ref")
-          WORKFLOW_REF="${{ github.workflow_ref }}"
-          FACTORY_REPO="$(echo "$WORKFLOW_REF" | sed 's|/.github/workflows/.*||')"
-          FACTORY_REF="$(echo "$WORKFLOW_REF" | grep -oP '(?<=@).*' | sed 's|refs/heads/||; s|refs/tags/||')"
-
-          # Target repo owner (for App token scoping)
           TARGET_OWNER="$(echo "${{ inputs.target_repo }}" | cut -d'/' -f1)"
-
-          echo "factory_repo=$FACTORY_REPO" >> "$GITHUB_OUTPUT"
-          echo "factory_ref=$FACTORY_REF"   >> "$GITHUB_OUTPUT"
           echo "target_owner=$TARGET_OWNER" >> "$GITHUB_OUTPUT"
 
       - name: Generate GitHub App token
@@ -70,14 +61,12 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ steps.parse.outputs.target_owner }}
-          # Omitting repositories grants access to all repos the App is installed on in the org
 
       - name: Check out factory repo (scripts + prompts)
         uses: actions/checkout@v4
         with:
-          repository: ${{ steps.parse.outputs.factory_repo }}
-          ref: ${{ steps.parse.outputs.factory_ref }}
-          token: ${{ steps.app-token.outputs.token }}
+          repository: falkobuttler/software-factory
+          ref: main
           path: factory
 
       - name: Check out target repo (code to work on)
