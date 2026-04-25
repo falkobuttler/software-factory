@@ -7,7 +7,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/state.sh"
 source "$SCRIPT_DIR/shared.sh"
 
-pr_number="${PR_NUMBER:?PR_NUMBER must be set}"
+# PR_NUMBER is set when coming from the Implement step; look it up when resuming directly.
+pr_number="${PR_NUMBER:-}"
+if [ -z "$pr_number" ]; then
+  pr_number=$(get_pr_for_issue)
+fi
+if [ -z "$pr_number" ]; then
+  log "ERROR: No open PR found for issue #${ISSUE_NUMBER}. Cannot run review cycle."
+  post_comment "I couldn't find an open PR for this issue to review. Please check that the branch was pushed, then re-add the \`ai-factory\` label."
+  exit 1
+fi
 log "Starting review cycle for PR #${pr_number}..."
 
 issue_title=$(gh issue view "$ISSUE_NUMBER" --repo "$TARGET_REPO" --json title --jq '.title')
