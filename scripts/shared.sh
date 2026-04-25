@@ -92,7 +92,7 @@ run_claude() {
   CLAUDE_MAX_TURNS="$max_turns" \
   CLAUDE_ALLOWED_TOOLS="Bash,Read,Write,Edit,Glob,Grep,LS" \
   WORK_DIR="$WORK_DIR" \
-    node "$FACTORY_DIR/scripts/run-claude.mjs" \
+    node "$FACTORY_DIR/scripts/run-claude.cjs" \
     < "$prompt_file" \
     2>&1 | tee "$CLAUDE_OUTPUT_FILE"
 
