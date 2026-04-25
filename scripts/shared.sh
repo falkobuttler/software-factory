@@ -86,7 +86,7 @@ get_pr_for_issue() {
 # All output is streamed live to the Actions log and saved to CLAUDE_OUTPUT_FILE for parsing.
 run_claude() {
   local prompt_file="$1"
-  local max_turns="${2:-50}"
+  local max_turns="${2:-500}"
 
   ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
   CLAUDE_MAX_TURNS="$max_turns" \
