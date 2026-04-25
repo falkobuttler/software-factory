@@ -81,21 +81,18 @@ get_pr_for_issue() {
   2>/dev/null | head -1
 }
 
-# Run the Claude Code agent with streaming output.
-# Prompt is read from prompt_file via stdin.
-# All output is streamed live to the Actions log and saved to CLAUDE_OUTPUT_FILE for parsing.
+# Run the Claude Code agent.
+# Output is saved to CLAUDE_OUTPUT_FILE and echoed to the Actions log.
 run_claude() {
   local prompt_file="$1"
   local max_turns="${2:-500}"
 
   ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
-  CLAUDE_MAX_TURNS="$max_turns" \
-  CLAUDE_ALLOWED_TOOLS="Bash,Read,Write,Edit,Glob,Grep,LS" \
-  WORK_DIR="$WORK_DIR" \
-    node "$FACTORY_DIR/scripts/run-claude.cjs" \
+    claude --print \
+    --max-turns "$max_turns" \
+    --allowedTools "Bash,Read,Write,Edit,Glob,Grep,LS" \
     < "$prompt_file" \
     2>&1 | tee "$CLAUDE_OUTPUT_FILE"
 
-  # Return the node script's exit code, not tee's
   return "${PIPESTATUS[0]}"
 }

@@ -90,10 +90,8 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install Claude Code SDK
-        run: |
-          npm install -g @anthropic-ai/claude-code
-          echo "NODE_PATH=$(npm root -g)" >> "$GITHUB_ENV"
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
 
       # ── Stage 1: Route ────────────────────────────────────────────────────
       - name: Route
