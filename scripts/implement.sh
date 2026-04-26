@@ -116,22 +116,16 @@ $(cat "$CLAUDE_OUTPUT_FILE")"
 # Open PR (idempotent)
 pr_number=$(get_pr_for_issue)
 if [ -z "$pr_number" ]; then
+  pr_body_file=$(mktemp)
+  printf '<!-- ai-review-round: 0 -->\n\nCloses #%s\n\n---\n\n## What\n\n%s\n\n## How\n\n%s\n' \
+    "$ISSUE_NUMBER" "$issue_body" "$plan" > "$pr_body_file"
   pr_url=$(gh pr create \
     --repo "$TARGET_REPO" \
     --title "${issue_title}" \
-    --body "## What
-
-${issue_body}
-
-## How
-
-${plan}
-
-Closes #${ISSUE_NUMBER}
-
-<!-- ai-review-round: 0 -->" \
+    --body-file "$pr_body_file" \
     --head "$branch" \
     --draft)
+  rm -f "$pr_body_file"
   pr_number=$(echo "$pr_url" | grep -oE '[0-9]+$')
   log "Opened PR #${pr_number}."
 else
