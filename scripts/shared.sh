@@ -53,7 +53,7 @@ get_review_round() {
     --repo "$TARGET_REPO" \
     --json body \
     --jq '.body' \
-  | grep -oP '(?<=<!-- ai-review-round: )\d+' || echo "0"
+  | grep -oE '<!-- ai-review-round: [0-9]+ -->' | grep -oE '[0-9]+' || echo "0"
 }
 
 set_review_round() {

@@ -132,7 +132,7 @@ Closes #${ISSUE_NUMBER}
 <!-- ai-review-round: 0 -->" \
     --head "$branch" \
     --draft)
-  pr_number=$(echo "$pr_url" | grep -oP '\d+$')
+  pr_number=$(echo "$pr_url" | grep -oE '[0-9]+$')
   log "Opened PR #${pr_number}."
 else
   log "PR #${pr_number} already exists."

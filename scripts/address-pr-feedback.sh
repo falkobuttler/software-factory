@@ -18,7 +18,7 @@ log "Addressing human PR feedback on PR #${pr_number}..."
 
 # Derive the actual issue number from the PR branch (ai/issue-N-slug)
 branch=$(gh pr view "$pr_number" --repo "$TARGET_REPO" --json headRefName --jq '.headRefName')
-issue_number=$(echo "$branch" | grep -oP '(?<=ai/issue-)\d+' || true)
+issue_number=$(echo "$branch" | sed -n 's/.*ai\/issue-\([0-9]*\)-.*/\1/p' || true)
 
 if [ -z "$issue_number" ]; then
   log "ERROR: Cannot derive issue number from branch '${branch}' — not a factory-managed PR."
