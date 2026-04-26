@@ -28,6 +28,10 @@ fi
 log "Derived issue #${issue_number} from branch ${branch}."
 export ISSUE_NUMBER="$issue_number"
 
+# Write outputs early so the review-cycle step has them even if we exit before the end.
+echo "pr_number=${pr_number}" >> "$GITHUB_OUTPUT"
+echo "issue_number=${issue_number}" >> "$GITHUB_OUTPUT"
+
 # Collect human feedback: review bodies, inline comments, general PR comments
 pr_reviews=$(gh api "repos/${TARGET_REPO}/pulls/${pr_number}/reviews" \
   --jq '[.[] | select(.user.type != "Bot" and (.body | length > 0)) | "**@\(.user.login) (\(.state)):**\n\(.body)"] | join("\n\n")' 2>/dev/null || echo "")
@@ -101,6 +105,3 @@ $(cat "$CLAUDE_OUTPUT_FILE")"
 else
   log "No file changes after addressing feedback."
 fi
-
-echo "pr_number=${pr_number}" >> "$GITHUB_OUTPUT"
-echo "issue_number=${issue_number}" >> "$GITHUB_OUTPUT"
