@@ -38,6 +38,11 @@ on:
         type: number
         required: false
         default: 0
+      runner:
+        description: "Runner label for the factory job (e.g. ubuntu-latest or self-hosted)"
+        type: string
+        required: false
+        default: "ubuntu-latest"
     secrets:
       APP_ID:
         required: true
@@ -57,7 +62,7 @@ env:
 
 jobs:
   factory:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 360
     permissions:
       contents: read
