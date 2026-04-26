@@ -81,19 +81,12 @@ get_pr_for_issue() {
   2>/dev/null | head -1
 }
 
-# Run the Claude Code agent.
-# Output is saved to CLAUDE_OUTPUT_FILE and echoed to the Actions log.
+# Run the Claude Code agent with real-time streaming output.
+# Output is written to stdout as it arrives AND saved to CLAUDE_OUTPUT_FILE.
 run_claude() {
   local prompt_file="$1"
   local max_turns="${2:-500}"
 
   ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
-    stdbuf -oL -eL \
-    claude --print \
-    --max-turns "$max_turns" \
-    --allowedTools "Bash,Read,Write,Edit,Glob,Grep,LS" \
-    < "$prompt_file" \
-    2>&1 | stdbuf -oL tee "$CLAUDE_OUTPUT_FILE"
-
-  return "${PIPESTATUS[0]}"
+    node "$FACTORY_DIR/scripts/run-claude.mjs" "$prompt_file" "$max_turns"
 }

@@ -1,0 +1,52 @@
+#!/usr/bin/env node
+// Streaming wrapper for @anthropic-ai/claude-agent-sdk.
+// Replaces `claude --print` to get real-time output in CI logs.
+// Text is written to stdout as it arrives AND captured to CLAUDE_OUTPUT_FILE.
+
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import { readFileSync, writeFileSync } from 'fs';
+
+const [, , promptFile, maxTurnsStr = '500'] = process.argv;
+const outputFile = process.env.CLAUDE_OUTPUT_FILE || '/tmp/last-claude-output.txt';
+
+if (!promptFile) {
+  process.stderr.write('Usage: run-claude.mjs <prompt-file> [max-turns]\n');
+  process.exit(1);
+}
+
+const prompt = readFileSync(promptFile, 'utf-8');
+const maxTurns = parseInt(maxTurnsStr, 10);
+
+let fullOutput = '';
+let exitCode = 0;
+
+try {
+  for await (const message of query({
+    prompt,
+    options: {
+      includePartialMessages: true,
+      allowedTools: ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep', 'LS'],
+      maxTurns,
+    },
+  })) {
+    if (message.type === 'stream_event') {
+      const { event } = message;
+      if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+        const text = event.delta.text;
+        process.stdout.write(text);
+        fullOutput += text;
+      }
+    } else if (message.type === 'result') {
+      if (message.subtype !== 'success') {
+        process.stderr.write(`[run-claude] Agent ended with subtype: ${message.subtype}\n`);
+        exitCode = 1;
+      }
+    }
+  }
+} catch (err) {
+  process.stderr.write(`[run-claude] Error: ${err.message}\n`);
+  exitCode = 1;
+}
+
+writeFileSync(outputFile, fullOutput);
+process.exit(exitCode);

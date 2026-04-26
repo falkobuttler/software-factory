@@ -96,8 +96,8 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
+      - name: Install factory dependencies
+        run: npm install --prefix factory
 
       # ── Stage 1: Route ────────────────────────────────────────────────────
       - name: Route

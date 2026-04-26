@@ -1,0 +1,8 @@
+{
+  "name": "software-factory",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.119"
+  }
+}
