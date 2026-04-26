@@ -103,3 +103,4 @@ else
 fi
 
 echo "pr_number=${pr_number}" >> "$GITHUB_OUTPUT"
+echo "issue_number=${issue_number}" >> "$GITHUB_OUTPUT"

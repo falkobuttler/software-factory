@@ -165,4 +165,7 @@ jobs:
           WORK_DIR: ${{ github.workspace }}/target
           FACTORY_DIR: ${{ github.workspace }}/factory
           PR_NUMBER: ${{ steps.implement.outputs.pr_number || steps.address_pr_feedback.outputs.pr_number }}
+          # When coming from address-pr-feedback, ISSUE_NUMBER in the global env is the PR number.
+          # Override it with the actual issue number the script derived from the branch name.
+          ISSUE_NUMBER: ${{ steps.address_pr_feedback.outputs.issue_number || inputs.issue_number }}
         run: bash factory/scripts/review-cycle.sh
