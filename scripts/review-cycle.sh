@@ -138,15 +138,14 @@ ${review_output}"
     exit 0
   fi
 
-  changes=$(echo "$review_output" | sed -n '/^CHANGES_REQUESTED:/,$p')
   post_pr_comment "$pr_number" "**Review round ${round}/${MAX_REVIEW_ROUNDS}** — changes requested:
 
-${changes}
+${review_output}
 
 $([ "$round" -lt "$MAX_REVIEW_ROUNDS" ] && echo 'Addressing feedback now...' || echo 'Max rounds reached — handing off for human review.')"
 
   if [ "$round" -lt "$MAX_REVIEW_ROUNDS" ]; then
-    address_feedback "$round" "$changes"
+    address_feedback "$round" "$review_output"
   fi
 done
 

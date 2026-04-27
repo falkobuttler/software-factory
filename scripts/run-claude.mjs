@@ -54,9 +54,6 @@ try {
           currentInput = '';
         }
 
-      } else if (event.type === 'input_json_delta') {
-        currentInput += event.delta?.partial_json || '';
-
       } else if (event.type === 'content_block_stop') {
         if (currentTool) {
           let parsed = {};
@@ -68,7 +65,9 @@ try {
         }
 
       } else if (event.type === 'content_block_delta') {
-        if (event.delta?.type === 'text_delta') {
+        if (event.delta?.type === 'input_json_delta') {
+          currentInput += event.delta?.partial_json || '';
+        } else if (event.delta?.type === 'text_delta') {
           const text = event.delta.text;
           process.stdout.write(text);
           fullOutput += text;
