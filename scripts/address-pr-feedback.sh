@@ -96,7 +96,10 @@ if ! git -C "$WORK_DIR" diff --quiet || \
    ! git -C "$WORK_DIR" diff --cached --quiet || \
    [ -n "$(git -C "$WORK_DIR" ls-files --others --exclude-standard)" ]; then
   git add -A
-  git commit -m "fix: address human PR feedback for #${ISSUE_NUMBER}"
+  summary=$(grep -m1 '[^[:space:]]' "$CLAUDE_OUTPUT_FILE" | cut -c1-120 || true)
+  commit_msg="fix: address human PR feedback for #${ISSUE_NUMBER}"
+  [ -n "$summary" ] && commit_msg="${commit_msg} — ${summary}"
+  git commit -m "$commit_msg"
   git push origin HEAD
   log "Changes committed and pushed."
   post_comment "## Human PR feedback addressed
