@@ -19,14 +19,14 @@ const maxTurns = parseInt(maxTurnsStr, 10);
 
 function toolSummary(name, input) {
   switch (name) {
-    case 'Bash':   return (input.command  || '').split('\n')[0].slice(0, 200);
+    case 'Bash':   return (input.command || '').slice(0, 500);
     case 'Read':   return input.file_path || '';
     case 'Write':  return input.file_path || '';
-    case 'Edit':   return input.file_path || '';
+    case 'Edit':   return `${input.file_path || ''}\n  - ${(input.old_string || '').split('\n')[0].slice(0, 120)}`;
     case 'Glob':   return `${input.pattern || ''}${input.path ? ' in ' + input.path : ''}`;
     case 'Grep':   return `${input.pattern || ''} in ${input.path || '.'}`;
     case 'LS':     return input.path || '.';
-    default:       return JSON.stringify(input).slice(0, 120);
+    default:       return JSON.stringify(input).slice(0, 200);
   }
 }
 
