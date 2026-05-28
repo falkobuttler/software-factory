@@ -16,17 +16,18 @@ if [ -z "$pr_number" ] || [ "$pr_number" = "0" ]; then
 fi
 log "Addressing human PR feedback on PR #${pr_number}..."
 
-# Derive the actual issue number from the PR branch (ai/issue-N-slug)
+# Derive the actual issue number from the PR branch (ai/issue-N-slug).
+# If the branch doesn't follow that convention, we still address the feedback —
+# we just won't have access to the originating issue's plan, title, or state.
 branch=$(gh pr view "$pr_number" --repo "$TARGET_REPO" --json headRefName --jq '.headRefName')
 issue_number=$(echo "$branch" | sed -n 's/.*ai\/issue-\([0-9]*\)-.*/\1/p' || true)
 
-if [ -z "$issue_number" ]; then
-  log "ERROR: Cannot derive issue number from branch '${branch}' — not a factory-managed PR."
-  exit 1
+if [ -n "$issue_number" ]; then
+  log "Derived issue #${issue_number} from branch ${branch}."
+  export ISSUE_NUMBER="$issue_number"
+else
+  log "Cannot derive issue number from branch '${branch}' — proceeding without issue context."
 fi
-
-log "Derived issue #${issue_number} from branch ${branch}."
-export ISSUE_NUMBER="$issue_number"
 
 # Write outputs early so the review-cycle step has them even if we exit before the end.
 echo "pr_number=${pr_number}" >> "$GITHUB_OUTPUT"
@@ -49,8 +50,13 @@ if [ -z "$(echo "$feedback" | tr -d '[:space:]')" ]; then
   exit 0
 fi
 
-plan=$(get_plan_from_issue)
-issue_title=$(gh issue view "$ISSUE_NUMBER" --repo "$TARGET_REPO" --json title --jq '.title')
+plan=""
+issue_title=""
+if [ -n "${ISSUE_NUMBER:-}" ]; then
+  plan=$(get_plan_from_issue)
+  issue_title=$(gh issue view "$ISSUE_NUMBER" --repo "$TARGET_REPO" --json title --jq '.title')
+fi
+pr_title=$(gh pr view "$pr_number" --repo "$TARGET_REPO" --json title --jq '.title')
 claude_md=""
 if [ -f "$WORK_DIR/CLAUDE.md" ]; then
   claude_md=$(cat "$WORK_DIR/CLAUDE.md")
@@ -63,7 +69,9 @@ git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${TARGE
 git fetch origin "$branch"
 git checkout "$branch"
 
-set_state "addressing-review"
+if [ -n "${ISSUE_NUMBER:-}" ]; then
+  set_state "addressing-review"
+fi
 
 prompt_file=$(mktemp)
 {
@@ -72,12 +80,20 @@ prompt_file=$(mktemp)
   echo "## Repository context (CLAUDE.md)"
   echo "${claude_md:-No CLAUDE.md found — infer test commands from project structure.}"
   echo ""
-  echo "## Original issue"
-  echo "Title: ${issue_title}"
-  echo ""
-  echo "## Original implementation plan"
-  echo "${plan}"
-  echo ""
+  if [ -n "${ISSUE_NUMBER:-}" ]; then
+    echo "## Original issue"
+    echo "Title: ${issue_title}"
+    echo ""
+    echo "## Original implementation plan"
+    echo "${plan}"
+    echo ""
+  else
+    echo "## Pull request"
+    echo "Title: ${pr_title}"
+    echo ""
+    echo "(No originating factory issue — work directly from the PR diff and human feedback below.)"
+    echo ""
+  fi
   echo "## Human feedback on the PR to address"
   echo "${feedback}"
   echo ""
@@ -97,14 +113,23 @@ if ! git -C "$WORK_DIR" diff --quiet || \
    [ -n "$(git -C "$WORK_DIR" ls-files --others --exclude-standard)" ]; then
   git add -A
   summary=$(grep -m1 '^DONE:' "$CLAUDE_OUTPUT_FILE" | sed 's/^DONE:[[:space:]]*//' | cut -c1-120 || true)
-  commit_msg="fix: address human PR feedback for #${ISSUE_NUMBER}"
+  if [ -n "${ISSUE_NUMBER:-}" ]; then
+    commit_msg="fix: address human PR feedback for #${ISSUE_NUMBER}"
+  else
+    commit_msg="fix: address human PR feedback on PR #${pr_number}"
+  fi
   [ -n "$summary" ] && commit_msg="${commit_msg} — ${summary}"
   git commit -m "$commit_msg"
   git push origin HEAD
   log "Changes committed and pushed."
-  post_comment "## Human PR feedback addressed
+  feedback_comment="## Human PR feedback addressed
 
 $(cat "$CLAUDE_OUTPUT_FILE")"
+  if [ -n "${ISSUE_NUMBER:-}" ]; then
+    post_comment "$feedback_comment"
+  else
+    post_pr_comment "$pr_number" "$feedback_comment"
+  fi
 else
   log "No file changes after addressing feedback."
 fi
