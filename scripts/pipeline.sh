@@ -338,7 +338,7 @@ PROMPT
 
     cd "$WORK_DIR"
     local review_output
-    review_output=$(run_claude "$prompt_file" "--max-turns 20")
+    review_output=$(run_claude "$prompt_file" "--max-turns 50")
     rm -f "$prompt_file"
 
     if echo "$review_output" | grep -q "^LGTM"; then
