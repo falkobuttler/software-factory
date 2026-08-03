@@ -4,5 +4,13 @@
   "type": "module",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.119"
+  },
+  "devDependencies": {
+    "bats": "^1.11.1"
+  },
+  "scripts": {
+    "test": "npm run test:shell && npm run test:node",
+    "test:shell": "bats tests/*.bats",
+    "test:node": "node --test tests/*.test.mjs"
   }
 }

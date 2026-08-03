@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >> "${GH_STUB_LOG:?}"
+
+args="$*"
+case "$args" in
+  issue\ view*)
+    if [[ "$args" == *"startswith(\"ai:\")"* ]]; then
+      printf '%s\n' "${GH_STUB_AI_LABELS:-}"
+    elif [[ "$args" == *"--json labels"* ]]; then
+      printf '%s\n' "${GH_STUB_LABELS:-}"
+    elif [[ "$args" == *"--json comments"* ]]; then
+      plan="${GH_STUB_PLAN_BODY:-}"
+      if [[ "$plan" == *"<!-- ai-plan-start -->"* ]]; then
+        plan="<!-- ai-plan-start -->${plan##*<!-- ai-plan-start -->}"
+      fi
+      printf '%s\n' "$plan"
+    elif [[ "$args" == *"--json title,body,comments"* ]]; then
+      if [ -n "${GH_STUB_ISSUE_CONTENT_RAW:-}" ]; then
+        printf '%s\n' "$GH_STUB_ISSUE_CONTENT_RAW" |
+          jq -c '{title: .title, body: .body, comments: [.comments[] | select(.body | contains("<!-- ai-factory-bot -->") | not) | .body]}'
+      else
+        printf '%s\n' "${GH_STUB_ISSUE_CONTENT:-}"
+      fi
+    fi
+    ;;
+  pr\ view*)
+    if [[ "$args" == *"--json body"* ]]; then
+      printf '%s\n' "${GH_STUB_PR_BODY:-}"
+    fi
+    ;;
+  pr\ list*)
+    while read -r number branch; do
+      case "$branch" in
+        ai/issue-"${ISSUE_NUMBER}"-*) printf '%s\n' "$number"; break ;;
+      esac
+    done <<< "${GH_STUB_PR_LINES:-${GH_STUB_PR_NUMBER:-}}"
+    ;;
+  issue\ edit*)
+    ;;
+  pr\ edit*)
+    ;;
+  label\ create*)
+    ;;
+esac
