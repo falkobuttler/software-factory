@@ -20,7 +20,7 @@ assert_action() {
 }
 
 @test "issues labeled with a non-trigger label is a noop" {
-  EVENT_NAME=issues LABEL_NAME=bug GH_STUB_LABELS="" route
+  EVENT_NAME=issues EVENT_ACTION=labeled LABEL_NAME=bug GH_STUB_LABELS="" route
   assert_action noop
 }
 
