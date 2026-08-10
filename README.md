@@ -98,6 +98,13 @@ npm run lint
 - Tests in `__tests__/` alongside source files
 ```
 
+For repositories that run on a self-hosted machine, pass `runner: self-hosted`
+in the workflow's `with:` block. Git pushes will use that runner's existing
+GitHub CLI protocol and authentication (HTTPS credential helper or SSH), so
+long-running jobs do not depend on the one-hour App token used during checkout.
+GitHub-hosted jobs continue to use the App token because those runners have no
+durable local login.
+
 ### 5. Use the factory
 
 Add the **`ai-factory`** label to any issue. The pipeline starts automatically.

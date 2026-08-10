@@ -213,7 +213,6 @@ run_implementer() {
   # Set up git
   git config user.email "software-factory[bot]@users.noreply.github.com"
   git config user.name "software-factory[bot]"
-  git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${TARGET_REPO}.git"
 
   # Create or switch to branch
   if git ls-remote --heads origin "$branch" | grep -q "$branch"; then

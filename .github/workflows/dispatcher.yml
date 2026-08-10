@@ -93,8 +93,30 @@ jobs:
         with:
           repository: ${{ inputs.target_repo }}
           token: ${{ steps.app-token.outputs.token }}
+          # Self-hosted jobs can outlive the App token. Use it only for checkout
+          # there, then let Git use the runner's durable local authentication.
+          # GitHub-hosted runners have no local credentials, so retain the token.
+          persist-credentials: ${{ inputs.runner != 'self-hosted' }}
           path: target
           fetch-depth: 0
+
+      - name: Configure self-hosted Git authentication
+        if: inputs.runner == 'self-hosted'
+        working-directory: target
+        run: |
+          git_protocol="$(gh config get git_protocol --host github.com)"
+          case "$git_protocol" in
+            ssh)
+              git remote set-url origin "git@github.com:${TARGET_REPO}.git"
+              ;;
+            https)
+              git remote set-url origin "https://github.com/${TARGET_REPO}.git"
+              ;;
+            *)
+              echo "Unsupported local GitHub protocol: ${git_protocol}" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -108,12 +130,13 @@ jobs:
       - name: Route
         id: route
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_AUTH_MODE: ${{ inputs.runner == 'self-hosted' && 'local' || 'app' }}
           WORK_DIR: ${{ github.workspace }}/target
           FACTORY_DIR: ${{ github.workspace }}/factory
         run: |
           chmod +x factory/scripts/*.sh
-          bash factory/scripts/route.sh
+          bash factory/scripts/with-github-auth.sh bash factory/scripts/route.sh
 
       # ── Stage 2: Plan ─────────────────────────────────────────────────────
       - name: Plan
@@ -123,11 +146,12 @@ jobs:
           steps.route.outputs.action == 'resume-plan'
         # Skipped when resuming from implement/review/stuck — plan already exists in issue
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_AUTH_MODE: ${{ inputs.runner == 'self-hosted' && 'local' || 'app' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WORK_DIR: ${{ github.workspace }}/target
           FACTORY_DIR: ${{ github.workspace }}/factory
-        run: bash factory/scripts/plan.sh
+        run: bash factory/scripts/with-github-auth.sh bash factory/scripts/plan.sh
 
       # ── Stage 3: Implement ────────────────────────────────────────────────
       - name: Implement
@@ -136,26 +160,28 @@ jobs:
           steps.route.outputs.action == 'implement' ||
           (steps.plan.outcome == 'success' && steps.plan.outputs.has_questions != 'true')
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_AUTH_MODE: ${{ inputs.runner == 'self-hosted' && 'local' || 'app' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WORK_DIR: ${{ github.workspace }}/target
           FACTORY_DIR: ${{ github.workspace }}/factory
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: bash factory/scripts/implement.sh
+        run: bash factory/scripts/with-github-auth.sh bash factory/scripts/implement.sh
 
       # ── Stage 4a: Address human PR feedback ──────────────────────────────
       - name: Address PR feedback
         id: address_pr_feedback
         if: steps.route.outputs.action == 'address-pr-feedback'
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_AUTH_MODE: ${{ inputs.runner == 'self-hosted' && 'local' || 'app' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WORK_DIR: ${{ github.workspace }}/target
           FACTORY_DIR: ${{ github.workspace }}/factory
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: bash factory/scripts/address-pr-feedback.sh
+        run: bash factory/scripts/with-github-auth.sh bash factory/scripts/address-pr-feedback.sh
 
       # ── Stage 4b: Review cycle ────────────────────────────────────────────
       - name: Review cycle
@@ -165,7 +191,8 @@ jobs:
           (steps.implement.outcome == 'success' && steps.implement.outputs.stuck != 'true') ||
           steps.address_pr_feedback.outcome == 'success'
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_AUTH_MODE: ${{ inputs.runner == 'self-hosted' && 'local' || 'app' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WORK_DIR: ${{ github.workspace }}/target
           FACTORY_DIR: ${{ github.workspace }}/factory
@@ -173,4 +200,4 @@ jobs:
           # When coming from address-pr-feedback, ISSUE_NUMBER in the global env is the PR number.
           # Override it with the actual issue number the script derived from the branch name.
           ISSUE_NUMBER: ${{ steps.address_pr_feedback.outputs.issue_number || inputs.issue_number }}
-        run: bash factory/scripts/review-cycle.sh
+        run: bash factory/scripts/with-github-auth.sh bash factory/scripts/review-cycle.sh
