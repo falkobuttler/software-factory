@@ -38,7 +38,6 @@ State is tracked via `ai:*` labels on the issue. Re-adding `ai-factory` resumes 
 
 scripts/
   route.sh                # Reads event + issue state → picks pipeline action
-  with-github-auth.sh     # Selects local or GitHub App authentication per runner
   plan.sh                 # Planning agent: produces structured plan or asks questions
   implement.sh            # Implementation agent: branch, code, commit, open PR
   review-cycle.sh         # Review loop: AI review → address feedback → repeat
@@ -68,7 +67,7 @@ target-repo-template/
 3. Create a `CLAUDE.md` in the target repo root describing the tech stack, project conventions, and test commands (e.g. `npm test`, `xcodebuild test ...`). The agents read this on every run.
 4. Add the `ai-factory` label to any issue to trigger the pipeline.
 
-For repos that need a specific runner (e.g. macOS + Xcode for iOS), pass `runner: self-hosted` in the workflow's `with:` block. Git pushes on self-hosted runners use the runner's GitHub CLI protocol and local authentication rather than the short-lived GitHub App checkout token.
+For repos that need a specific runner (e.g. macOS + Xcode for iOS), pass `runner: self-hosted` in the workflow's `with:` block. Git fetches and pushes on self-hosted runners use local SSH authentication rather than the short-lived GitHub App checkout token; `gh` API commands continue to use the App token.
 
 ## Trigger events
 
