@@ -42,6 +42,7 @@ else
   log "Creating branch ${branch}."
   git checkout -b "$branch"
 fi
+agent_start_head=$(git rev-parse HEAD)
 
 # Write prompt to a file (avoids shell argument length limits)
 prompt_file=$(mktemp)
@@ -68,6 +69,9 @@ if ! run_claude "$prompt_file"; then
   if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
     git add -A
     git commit -m "wip: partial progress on #${ISSUE_NUMBER} (agent error)" || true
+  fi
+  # The agent may have created its own checkpoint commit before failing.
+  if [ "$(git rev-parse HEAD)" != "$agent_start_head" ]; then
     git push origin "$branch" || true
   fi
   post_comment "The implementation agent encountered an unexpected error. Please check the [workflow run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions) for details, then reply here to resume."
@@ -85,6 +89,9 @@ if echo "$output" | grep -q "^STUCK:"; then
   if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
     git add -A
     git commit -m "wip: partial progress on #${ISSUE_NUMBER} (stuck)" || true
+  fi
+  # Preserve both agent-created commits and the fallback commit above.
+  if [ "$(git rev-parse HEAD)" != "$agent_start_head" ]; then
     git push origin "$branch" || true
   fi
   post_comment "I'm stuck and need your help:
@@ -100,12 +107,19 @@ fi
 
 # Commit all changes
 if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
-  log "WARNING: No file changes detected after implementation."
+  log "No uncommitted file changes detected after implementation."
 else
   git add -A
   git commit -m "feat: implement #${ISSUE_NUMBER}: ${issue_title}"
+fi
+
+# Agents checkpoint their own work when possible; push any commits created
+# during the run regardless of whether the working tree is now clean.
+if [ "$(git rev-parse HEAD)" != "$agent_start_head" ]; then
   git push origin "$branch"
   log "Changes committed and pushed to ${branch}."
+else
+  log "WARNING: No commits were created during implementation."
 fi
 
 post_comment "## Implementation complete

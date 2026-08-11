@@ -67,6 +67,7 @@ git config user.email "software-factory[bot]@users.noreply.github.com"
 git config user.name "software-factory[bot]"
 git fetch origin "$branch"
 git checkout "$branch"
+agent_start_head=$(git rev-parse HEAD)
 
 if [ -n "${ISSUE_NUMBER:-}" ]; then
   set_state "addressing-review"
@@ -119,6 +120,11 @@ if ! git -C "$WORK_DIR" diff --quiet || \
   fi
   [ -n "$summary" ] && commit_msg="${commit_msg} — ${summary}"
   git commit -m "$commit_msg"
+fi
+
+# The agent may have committed its own checkpoint, leaving a clean worktree.
+# Push whenever HEAD advanced during this run rather than keying off git diff.
+if [ "$(git rev-parse HEAD)" != "$agent_start_head" ]; then
   git push origin HEAD
   log "Changes committed and pushed."
   feedback_comment="## Human PR feedback addressed
@@ -130,5 +136,5 @@ $(cat "$CLAUDE_OUTPUT_FILE")"
     post_pr_comment "$pr_number" "$feedback_comment"
   fi
 else
-  log "No file changes after addressing feedback."
+  log "No commits created while addressing feedback."
 fi

@@ -103,7 +103,10 @@ in the workflow's `with:` block. Git fetches and pushes use that runner's SSH
 authentication, so long-running jobs do not depend on the one-hour App token
 stored by checkout. The `gh` CLI continues to use the App token for GitHub API
 operations. GitHub-hosted jobs retain the checkout token because those runners
-have no durable local Git authentication.
+have no durable local Git authentication. The target repository is checked out
+at the job workspace root. The factory runtime is downloaded as a GitHub Action
+under the runner's `_actions` directory, so it does not require a second
+checkout or appear inside the target worktree.
 
 ### 5. Use the factory
 
@@ -131,6 +134,7 @@ If the agent can't resolve test failures or a technical blocker, it posts a deta
 
 ```
 software-factory/
+├── action.yml                         # Makes the runtime available without a checkout
 ├── .github/
 │   └── workflows/
 │       └── dispatcher.yml          # Main reusable workflow (called by target repos)
@@ -154,7 +158,10 @@ Edit the files in `prompts/` to change how each agent thinks:
 - **`prompts/implementer.md`** — coding standards, when to give up, output format
 - **`prompts/reviewer.md`** — review criteria, what counts as a blocking issue
 
-Changes to prompts take effect immediately (the factory repo is checked out fresh each run at the commit pinned in the target repo's `uses:` line — use `@main` to always get the latest).
+Changes to prompts take effect on the next pipeline run because the dispatcher
+downloads the factory action from `@main`. For a versioned release, pin both the
+target workflow's dispatcher reference and the action reference inside the
+dispatcher.
 
 ## Cost and runtime estimates
 

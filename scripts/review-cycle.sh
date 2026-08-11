@@ -19,6 +19,14 @@ if [ -z "$pr_number" ]; then
 fi
 log "Starting review cycle for PR #${pr_number}..."
 
+# Review and warning fixes must run on the PR head, including when this stage is
+# resumed in a fresh job whose checkout initially points at the default branch.
+pr_branch=$(gh pr view "$pr_number" --repo "$TARGET_REPO" --json headRefName --jq '.headRefName')
+git -C "$WORK_DIR" config user.email "software-factory[bot]@users.noreply.github.com"
+git -C "$WORK_DIR" config user.name "software-factory[bot]"
+git -C "$WORK_DIR" fetch origin "$pr_branch"
+git -C "$WORK_DIR" checkout -B "$pr_branch" "origin/$pr_branch"
+
 issue_title=$(gh issue view "$ISSUE_NUMBER" --repo "$TARGET_REPO" --json title --jq '.title')
 claude_md=""
 if [ -f "$WORK_DIR/CLAUDE.md" ]; then
@@ -27,6 +35,7 @@ fi
 
 run_review() {
   local round="$1"
+  local agent_start_head agent_failed="false"
   set_state "reviewing"
   set_review_round "$pr_number" "$round"
 
@@ -56,19 +65,35 @@ run_review() {
   } > "$prompt_file"
 
   cd "$WORK_DIR"
+  agent_start_head=$(git rev-parse HEAD)
   log "--- Claude review agent output (round ${round}/${MAX_REVIEW_ROUNDS}) ---"
   if ! run_claude "$prompt_file" "20"; then
-    log "Review agent failed. Marking PR ready for human review."
-    rm -f "$prompt_file"
-    return 1
+    log "Review agent failed. Preserving any partial warning fixes."
+    agent_failed="true"
   fi
   rm -f "$prompt_file"
+
+  # Fall back to a pipeline-created checkpoint if the reviewer was interrupted
+  # before it could commit its own changes.
+  if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+    git add -A
+    git commit -m "fix: resolve compiler warnings during review round ${round} for #${ISSUE_NUMBER}"
+  fi
+  if [ "$(git rev-parse HEAD)" != "$agent_start_head" ]; then
+    git push origin HEAD
+    log "Reviewer changes committed and pushed."
+  fi
+
+  if [ "$agent_failed" = "true" ]; then
+    return 1
+  fi
   cat "$CLAUDE_OUTPUT_FILE"
 }
 
 address_feedback() {
   local round="$1"
   local feedback="$2"
+  local agent_start_head
   set_state "addressing-review"
 
   local plan
@@ -95,6 +120,7 @@ address_feedback() {
   } > "$prompt_file"
 
   cd "$WORK_DIR"
+  agent_start_head=$(git rev-parse HEAD)
   log "--- Claude addressing review feedback (round ${round}/${MAX_REVIEW_ROUNDS}) ---"
   if ! run_claude "$prompt_file"; then
     log "Address-feedback agent failed. Committing whatever exists."
@@ -108,10 +134,13 @@ address_feedback() {
      [ -n "$(git -C "$WORK_DIR" ls-files --others --exclude-standard)" ]; then
     git -C "$WORK_DIR" add -A
     git -C "$WORK_DIR" commit -m "fix: address review feedback round ${round} for #${ISSUE_NUMBER}"
+  fi
+
+  if [ "$(git -C "$WORK_DIR" rev-parse HEAD)" != "$agent_start_head" ]; then
     git -C "$WORK_DIR" push origin HEAD
     log "Review feedback addressed and pushed."
   else
-    log "No file changes after addressing feedback."
+    log "No commits created while addressing feedback."
   fi
 }
 

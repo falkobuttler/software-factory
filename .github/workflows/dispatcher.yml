@@ -81,13 +81,6 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ steps.parse.outputs.target_owner }}
 
-      - name: Check out factory repo (scripts + prompts)
-        uses: actions/checkout@v6
-        with:
-          repository: falkobuttler/software-factory
-          ref: main
-          path: factory
-
       - name: Check out target repo (code to work on)
         uses: actions/checkout@v6
         with:
@@ -97,13 +90,21 @@ jobs:
           # self-hosted runners; subsequent Git commands use local SSH auth.
           # GitHub-hosted runners have no durable local credentials.
           persist-credentials: ${{ inputs.runner != 'self-hosted' }}
-          path: target
           fetch-depth: 0
 
       - name: Configure self-hosted Git authentication
         if: inputs.runner == 'self-hosted'
-        working-directory: target
-        run: git remote set-url origin "git@github.com:${TARGET_REPO}.git"
+        # Keep the canonical HTTPS origin written by checkout so the next job
+        # reuses this worktree. Git transparently uses durable SSH auth for all
+        # fetches and pushes without making checkout discard the repository.
+        run: git config --local url."git@github.com:".insteadOf "https://github.com/"
+
+      # Referencing the factory as an action makes the runner download it under
+      # _actions, outside the target worktree. This avoids a second checkout and
+      # keeps factory files out of commits made by the implementation agent.
+      - name: Locate factory runtime (scripts + prompts)
+        id: factory-runtime
+        uses: falkobuttler/software-factory@main
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -111,18 +112,20 @@ jobs:
           node-version: "24"
 
       - name: Install factory dependencies
-        run: npm install --prefix factory
+        env:
+          FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
+        run: npm install --prefix "$FACTORY_DIR"
 
       # ── Stage 1: Route ────────────────────────────────────────────────────
       - name: Route
         id: route
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          WORK_DIR: ${{ github.workspace }}/target
-          FACTORY_DIR: ${{ github.workspace }}/factory
+          WORK_DIR: ${{ github.workspace }}
+          FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
         run: |
-          chmod +x factory/scripts/*.sh
-          bash factory/scripts/route.sh
+          chmod +x "$FACTORY_DIR"/scripts/*.sh
+          bash "$FACTORY_DIR/scripts/route.sh"
 
       # ── Stage 2: Plan ─────────────────────────────────────────────────────
       - name: Plan
@@ -134,9 +137,9 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          WORK_DIR: ${{ github.workspace }}/target
-          FACTORY_DIR: ${{ github.workspace }}/factory
-        run: bash factory/scripts/plan.sh
+          WORK_DIR: ${{ github.workspace }}
+          FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
+        run: bash "$FACTORY_DIR/scripts/plan.sh"
 
       # ── Stage 3: Implement ────────────────────────────────────────────────
       - name: Implement
@@ -147,11 +150,11 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          WORK_DIR: ${{ github.workspace }}/target
-          FACTORY_DIR: ${{ github.workspace }}/factory
+          WORK_DIR: ${{ github.workspace }}
+          FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: bash factory/scripts/implement.sh
+        run: bash "$FACTORY_DIR/scripts/implement.sh"
 
       # ── Stage 4a: Address human PR feedback ──────────────────────────────
       - name: Address PR feedback
@@ -160,11 +163,11 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          WORK_DIR: ${{ github.workspace }}/target
-          FACTORY_DIR: ${{ github.workspace }}/factory
+          WORK_DIR: ${{ github.workspace }}
+          FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: bash factory/scripts/address-pr-feedback.sh
+        run: bash "$FACTORY_DIR/scripts/address-pr-feedback.sh"
 
       # ── Stage 4b: Review cycle ────────────────────────────────────────────
       - name: Review cycle
@@ -176,10 +179,10 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          WORK_DIR: ${{ github.workspace }}/target
-          FACTORY_DIR: ${{ github.workspace }}/factory
+          WORK_DIR: ${{ github.workspace }}
+          FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
           PR_NUMBER: ${{ steps.implement.outputs.pr_number || steps.address_pr_feedback.outputs.pr_number }}
           # When coming from address-pr-feedback, ISSUE_NUMBER in the global env is the PR number.
           # Override it with the actual issue number the script derived from the branch name.
           ISSUE_NUMBER: ${{ steps.address_pr_feedback.outputs.issue_number || inputs.issue_number }}
-        run: bash factory/scripts/review-cycle.sh
+        run: bash "$FACTORY_DIR/scripts/review-cycle.sh"

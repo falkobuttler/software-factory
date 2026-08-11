@@ -1,0 +1,15 @@
+name: Software Factory Runtime
+description: Exposes the downloaded factory runtime to the reusable workflow.
+
+outputs:
+  factory_dir:
+    description: Absolute path to the downloaded factory scripts and prompts.
+    value: ${{ steps.location.outputs.factory_dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Locate factory runtime
+      id: location
+      shell: bash
+      run: echo "factory_dir=${GITHUB_ACTION_PATH}" >> "${GITHUB_OUTPUT}"

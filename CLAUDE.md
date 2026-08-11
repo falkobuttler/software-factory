@@ -36,6 +36,8 @@ State is tracked via `ai:*` labels on the issue. Re-adding `ai-factory` resumes 
 .github/workflows/
   dispatcher.yml          # Reusable workflow called by every target repo
 
+action.yml                # Exposes the factory runtime outside the target worktree
+
 scripts/
   route.sh                # Reads event + issue state → picks pipeline action
   plan.sh                 # Planning agent: produces structured plan or asks questions
@@ -133,10 +135,10 @@ The pipeline uses plain-text markers in Claude's output to drive control flow:
 
 ## Dependencies
 
-- `@anthropic-ai/claude-agent-sdk` — declared in `package.json`, installed via `npm install --prefix factory` in the dispatcher
+- `@anthropic-ai/claude-agent-sdk` — declared in `package.json`, installed into the downloaded factory action directory by the dispatcher
 - `gh` CLI — must be available on the runner (pre-installed on GitHub-hosted runners and most self-hosted setups)
 - `git`, `bash`, `node` (v20+), `sed`, `jq` (via `gh`'s bundled jq)
 
 ## Modifying prompts
 
-Prompts live in `prompts/`. Changes take effect on the next pipeline run (the dispatcher always checks out `main`). The reviewer prompt (`prompts/reviewer.md`) uses severity levels CRITICAL/HIGH/MEDIUM/LOW; only Critical or High findings block approval.
+Prompts live in `prompts/`. Changes take effect on the next pipeline run (the dispatcher downloads the factory action from `main`). The reviewer prompt (`prompts/reviewer.md`) uses severity levels CRITICAL/HIGH/MEDIUM/LOW; only Critical or High findings block approval.

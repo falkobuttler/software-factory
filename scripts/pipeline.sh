@@ -221,6 +221,8 @@ run_implementer() {
   else
     git checkout -b "$branch"
   fi
+  local agent_start_head
+  agent_start_head=$(git rev-parse HEAD)
 
   local prompt_file
   prompt_file=$(mktemp)
@@ -257,6 +259,8 @@ Please reply to this comment with guidance and I'll resume."
     if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
       git add -A
       git commit -m "wip: partial progress on #${ISSUE_NUMBER} (stuck)" || true
+    fi
+    if [ "$(git rev-parse HEAD)" != "$agent_start_head" ]; then
       git push origin "$branch" || true
     fi
 
@@ -266,11 +270,15 @@ Please reply to this comment with guidance and I'll resume."
 
   # Commit all changes
   if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
-    log "WARNING: No file changes detected after implementation."
+    log "No uncommitted file changes detected after implementation."
   else
     git add -A
     git commit -m "feat: implement #${ISSUE_NUMBER}: ${issue_title}"
+  fi
+  if [ "$(git rev-parse HEAD)" != "$agent_start_head" ]; then
     git push origin "$branch"
+  else
+    log "WARNING: No commits were created during implementation."
   fi
 
   # Open PR (idempotent)
@@ -336,9 +344,18 @@ ${diff}
 PROMPT
 
     cd "$WORK_DIR"
-    local review_output
+    local review_output review_start_head
+    review_start_head=$(git rev-parse HEAD)
     review_output=$(run_claude "$prompt_file" "--max-turns 50")
     rm -f "$prompt_file"
+
+    if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+      git add -A
+      git commit -m "fix: resolve compiler warnings during review round ${round} for #${ISSUE_NUMBER}"
+    fi
+    if [ "$(git rev-parse HEAD)" != "$review_start_head" ]; then
+      git push origin HEAD
+    fi
 
     if echo "$review_output" | grep -q "^LGTM"; then
       log "Review passed! Marking PR ready."
@@ -409,9 +426,18 @@ Address each piece of feedback. Run tests after making changes to verify nothing
 PROMPT
 
   cd "$WORK_DIR"
-  local output
+  local output agent_start_head
+  agent_start_head=$(git rev-parse HEAD)
   output=$(run_claude "$prompt_file")
   rm -f "$prompt_file"
+
+  if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+    git add -A
+    git commit -m "fix: address review feedback for #${ISSUE_NUMBER}"
+  fi
+  if [ "$(git rev-parse HEAD)" != "$agent_start_head" ]; then
+    git push origin HEAD
+  fi
 
   if echo "$output" | grep -q "^STUCK:"; then
     local stuck_reason
@@ -424,12 +450,6 @@ Handing off to human review."
     gh pr ready "$pr_number" --repo "$TARGET_REPO"
     set_state "done"
     return 0
-  fi
-
-  if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
-    git add -A
-    git commit -m "fix: address review feedback for #${ISSUE_NUMBER}"
-    git push origin HEAD
   fi
 }
 

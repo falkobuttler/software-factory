@@ -38,7 +38,7 @@ assert_action() {
   EVENT_NAME=issues EVENT_ACTION=labeled LABEL_NAME=ai-factory GH_STUB_LABELS=ai:implementing route
   assert_action implement
   : > "$GITHUB_OUTPUT"
-  GH_STUB_LABELS=ai:stuck route
+  EVENT_NAME=issues EVENT_ACTION=labeled LABEL_NAME=ai-factory GH_STUB_LABELS=ai:stuck route
   assert_action implement
 }
 
@@ -46,7 +46,7 @@ assert_action() {
   EVENT_NAME=issues EVENT_ACTION=labeled LABEL_NAME=ai-factory GH_STUB_LABELS=ai:reviewing route
   assert_action review
   : > "$GITHUB_OUTPUT"
-  GH_STUB_LABELS=ai:addressing-review route
+  EVENT_NAME=issues EVENT_ACTION=labeled LABEL_NAME=ai-factory GH_STUB_LABELS=ai:addressing-review route
   assert_action review
 }
 
