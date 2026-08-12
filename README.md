@@ -143,8 +143,14 @@ software-factory/
 │   ├── implementer.md              # System prompt for the implementation agent
 │   └── reviewer.md                 # System prompt for the review agent
 ├── scripts/
+│   ├── route.sh                    # Chooses the stage for the current event/state
+│   ├── plan.sh                     # Planning stage
+│   ├── implement.sh                # Implementation stage
+│   ├── review-cycle.sh             # Automated review and feedback loop
+│   ├── address-pr-feedback.sh      # Handles human PR feedback
+│   ├── shared.sh                   # Shared agent and GitHub helpers
 │   ├── state.sh                    # GitHub label state management
-│   └── pipeline.sh                 # Full pipeline orchestration
+│   └── run-claude.mjs              # Streaming Claude Agent SDK wrapper
 └── target-repo-template/
     └── .github/
         └── workflows/

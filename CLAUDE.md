@@ -110,6 +110,8 @@ node scripts/run-claude.mjs <prompt-file> [max-turns]
 Source this in every script. Key functions:
 
 - `run_claude <prompt-file> [max-turns]` — runs the agent, streams output
+- `DEFAULT_AGENT_MAX_TURNS` — default turn limit for agents (`500`)
+- `REVIEW_AGENT_MAX_TURNS` — review-agent turn limit (`100`)
 - `post_comment <body>` — posts a bot-tagged comment on `$ISSUE_NUMBER`
 - `post_pr_comment <pr> <body>` — posts a bot-tagged comment on a PR
 - `get_plan_from_issue` — extracts the plan block from issue comments

@@ -15,7 +15,16 @@ if (!promptFile) {
 }
 
 const prompt = readFileSync(promptFile, 'utf-8');
-const maxTurns = parseInt(maxTurnsStr, 10);
+if (!/^[1-9]\d*$/.test(maxTurnsStr)) {
+  process.stderr.write(`[run-claude] max-turns must be a positive integer; received: ${maxTurnsStr}\n`);
+  process.exit(1);
+}
+
+const maxTurns = Number(maxTurnsStr);
+if (!Number.isSafeInteger(maxTurns)) {
+  process.stderr.write(`[run-claude] max-turns is outside the supported integer range: ${maxTurnsStr}\n`);
+  process.exit(1);
+}
 
 
 let fullOutput = '';

@@ -67,7 +67,7 @@ run_review() {
   cd "$WORK_DIR"
   agent_start_head=$(git rev-parse HEAD)
   log "--- Claude review agent output (round ${round}/${MAX_REVIEW_ROUNDS}) ---"
-  if ! run_claude "$prompt_file" "20"; then
+  if ! run_claude "$prompt_file" "$REVIEW_AGENT_MAX_TURNS"; then
     log "Review agent failed. Preserving any partial warning fixes."
     agent_failed="true"
   fi

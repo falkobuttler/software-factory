@@ -10,20 +10,29 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const script = join(root, 'scripts', 'run-claude.mjs');
 const loader = join(root, 'tests', 'run-claude-loader.mjs');
 
-function runClaude({ scenario = 'text', prompt = 'test prompt' } = {}) {
+function runClaude({ scenario = 'text', prompt = 'test prompt', maxTurns } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'run-claude-'));
   const promptFile = join(dir, 'prompt.txt');
   const outputFile = join(dir, 'output.txt');
   writeFileSync(promptFile, prompt);
-  const result = spawnSync(process.execPath, ['--experimental-loader', loader, script, promptFile], {
-    env: { ...process.env, MOCK_CLAUDE_SCENARIO: scenario, CLAUDE_OUTPUT_FILE: outputFile },
+  const args = ['--experimental-loader', loader, script, promptFile];
+  if (maxTurns !== undefined) args.push(String(maxTurns));
+  const result = spawnSync(process.execPath, args, {
+    env: {
+      ...process.env,
+      MOCK_CLAUDE_SCENARIO: scenario,
+      MOCK_EXPECTED_MAX_TURNS: maxTurns === undefined ? '' : String(maxTurns),
+      CLAUDE_OUTPUT_FILE: outputFile,
+    },
     encoding: 'utf8',
   });
   return { ...result, output: readFileSync(outputFile, 'utf8') };
 }
 
 test('missing prompt-file argument prints usage and exits 1', () => {
-  const result = spawnSync(process.execPath, [script], { encoding: 'utf8' });
+  const result = spawnSync(process.execPath, ['--experimental-loader', loader, script], {
+    encoding: 'utf8',
+  });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Usage: run-claude\.mjs <prompt-file>/);
 });
@@ -33,6 +42,27 @@ test('streams text deltas and writes accumulated output', () => {
   assert.equal(result.status, 0);
   assert.equal(result.stdout, 'hello world');
   assert.equal(result.output, 'hello world');
+});
+
+test('passes the requested max-turns value to the agent SDK', () => {
+  const result = runClaude({ maxTurns: 50 });
+  assert.equal(result.status, 0);
+  assert.equal(result.output, 'hello world');
+});
+
+test('rejects a malformed max-turns value', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'run-claude-invalid-turns-'));
+  const promptFile = join(dir, 'prompt.txt');
+  writeFileSync(promptFile, 'test prompt');
+
+  const result = spawnSync(
+    process.execPath,
+    ['--experimental-loader', loader, script, promptFile, '--max-turns 50'],
+    { encoding: 'utf8' },
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /max-turns must be a positive integer/);
 });
 
 test('logs tool-use blocks while streaming output', () => {

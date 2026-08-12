@@ -1,8 +1,12 @@
 export async function resolve(specifier, context, nextResolve) {
   if (specifier === '@anthropic-ai/claude-agent-sdk') {
     return { url: 'data:text/javascript,' + encodeURIComponent(`
-      export async function* query() {
+      export async function* query({ options }) {
         const scenario = process.env.MOCK_CLAUDE_SCENARIO || 'text';
+        const expectedMaxTurns = process.env.MOCK_EXPECTED_MAX_TURNS;
+        if (expectedMaxTurns && options.maxTurns !== Number(expectedMaxTurns)) {
+          throw new Error('unexpected maxTurns: ' + options.maxTurns);
+        }
         if (scenario === 'throw') throw new Error('mock failure');
         yield { type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'hello ' } } };
         yield { type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'world' } } };

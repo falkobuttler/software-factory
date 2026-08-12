@@ -6,6 +6,17 @@ setup() {
   setup_shell_test
 }
 
+@test "agent turn limits are centralized and the review cycle uses the review limit" {
+  run bash -c "source '$BATS_TEST_DIRNAME/../scripts/shared.sh'; printf '%s %s' \"\$DEFAULT_AGENT_MAX_TURNS\" \"\$REVIEW_AGENT_MAX_TURNS\""
+  [ "$status" -eq 0 ]
+  [ "$output" = "500 100" ]
+
+  grep -F 'run_claude "$prompt_file" "$REVIEW_AGENT_MAX_TURNS"' \
+    "$BATS_TEST_DIRNAME/../scripts/review-cycle.sh"
+  ! grep -F 'run_claude "$prompt_file" "20"' \
+    "$BATS_TEST_DIRNAME/../scripts/review-cycle.sh"
+}
+
 @test "get_plan_from_issue extracts the plan from the last plan comment" {
   export GH_STUB_PLAN_BODY=$'old\n<!-- ai-plan-start -->\nold plan\n<!-- ai-plan-end -->\nnew\n<!-- ai-plan-start -->\nlatest plan\n<!-- ai-plan-end -->'
   run_function shared.sh "get_plan_from_issue"

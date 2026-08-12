@@ -2,7 +2,9 @@
 # Shared utilities for software factory pipeline scripts.
 # Source this file; do not execute directly.
 
-MAX_REVIEW_ROUNDS=3
+MAX_REVIEW_ROUNDS="${MAX_REVIEW_ROUNDS:-3}"
+DEFAULT_AGENT_MAX_TURNS="${DEFAULT_AGENT_MAX_TURNS:-500}"
+REVIEW_AGENT_MAX_TURNS="${REVIEW_AGENT_MAX_TURNS:-100}"
 BOT_LABEL="<!-- ai-factory-bot -->"
 CLAUDE_OUTPUT_FILE="/tmp/last-claude-output.txt"
 
@@ -85,7 +87,7 @@ get_pr_for_issue() {
 # Output is written to stdout as it arrives AND saved to CLAUDE_OUTPUT_FILE.
 run_claude() {
   local prompt_file="$1"
-  local max_turns="${2:-500}"
+  local max_turns="${2:-$DEFAULT_AGENT_MAX_TURNS}"
 
   ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
     node "$FACTORY_DIR/scripts/run-claude.mjs" "$prompt_file" "$max_turns"

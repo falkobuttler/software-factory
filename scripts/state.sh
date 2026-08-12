@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # State management for the software factory via GitHub issue labels.
 # All AI-managed labels are prefixed with "ai:".
-# Sourced by pipeline.sh — expects GH_TOKEN, TARGET_REPO, ISSUE_NUMBER in env.
+# Sourced by pipeline stage scripts — expects GH_TOKEN, TARGET_REPO, ISSUE_NUMBER in env.
 
 AI_LABELS=(
   "ai:planning"
