@@ -120,7 +120,8 @@ jobs:
       - name: Route
         id: route
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           WORK_DIR: ${{ github.workspace }}
           FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
         run: |
@@ -135,7 +136,8 @@ jobs:
           steps.route.outputs.action == 'resume-plan'
         # Skipped when resuming from implement/review/stuck — plan already exists in issue
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WORK_DIR: ${{ github.workspace }}
           FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
@@ -148,7 +150,8 @@ jobs:
           steps.route.outputs.action == 'implement' ||
           (steps.plan.outcome == 'success' && steps.plan.outputs.has_questions != 'true')
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WORK_DIR: ${{ github.workspace }}
           FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
@@ -161,7 +164,8 @@ jobs:
         id: address_pr_feedback
         if: steps.route.outputs.action == 'address-pr-feedback'
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WORK_DIR: ${{ github.workspace }}
           FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
@@ -177,7 +181,8 @@ jobs:
           (steps.implement.outcome == 'success' && steps.implement.outputs.stuck != 'true') ||
           steps.address_pr_feedback.outcome == 'success'
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WORK_DIR: ${{ github.workspace }}
           FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}

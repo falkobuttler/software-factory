@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/state.sh"
 source "$SCRIPT_DIR/shared.sh"
 
+refresh_github_token
+
 log "Running planning agent for issue #${ISSUE_NUMBER}..."
 set_state "planning"
 

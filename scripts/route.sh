@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/state.sh"
 source "$SCRIPT_DIR/shared.sh"
 
+refresh_github_token
+
 current_state=$(get_state)
 log "Event: ${EVENT_NAME}/${EVENT_ACTION}, Label: '${LABEL_NAME:-}', State: ${current_state}, Issue: #${ISSUE_NUMBER}"
 

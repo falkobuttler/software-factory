@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/state.sh"
 source "$SCRIPT_DIR/shared.sh"
 
+refresh_github_token
+
 # PR_NUMBER is set when coming from the Implement step; look it up when resuming directly.
 pr_number="${PR_NUMBER:-}"
 if [ -z "$pr_number" ]; then
@@ -147,6 +149,7 @@ address_feedback() {
 # ─── Review loop ─────────────────────────────────────────────────────────────
 
 for round in $(seq 1 "$MAX_REVIEW_ROUNDS"); do
+  refresh_github_token
   log "Review round ${round}/${MAX_REVIEW_ROUNDS}..."
 
   if ! run_review "$round"; then
@@ -174,6 +177,7 @@ ${review_output}
 $([ "$round" -lt "$MAX_REVIEW_ROUNDS" ] && echo 'Addressing feedback now...' || echo 'Max rounds reached — handing off for human review.')"
 
   if [ "$round" -lt "$MAX_REVIEW_ROUNDS" ]; then
+    refresh_github_token
     address_feedback "$round" "$review_output"
   fi
 done

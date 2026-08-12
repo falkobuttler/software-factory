@@ -69,7 +69,7 @@ target-repo-template/
 3. Create a `CLAUDE.md` in the target repo root describing the tech stack, project conventions, and test commands (e.g. `npm test`, `xcodebuild test ...`). The agents read this on every run.
 4. Add the `ai-factory` label to any issue to trigger the pipeline.
 
-For repos that need a specific runner (e.g. macOS + Xcode for iOS), pass `runner: self-hosted` in the workflow's `with:` block. Git fetches and pushes on self-hosted runners use local SSH authentication rather than the short-lived GitHub App checkout token; `gh` API commands continue to use the App token.
+For repos that need a specific runner (e.g. macOS + Xcode for iOS), pass `runner: self-hosted` in the workflow's `with:` block. Git fetches and pushes on self-hosted runners use local SSH authentication rather than the short-lived GitHub App checkout token; `gh` API commands use App tokens that are renewed around long-running agent calls.
 
 ## Trigger events
 

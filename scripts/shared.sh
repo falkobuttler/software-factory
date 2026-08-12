@@ -10,6 +10,17 @@ CLAUDE_OUTPUT_FILE="/tmp/last-claude-output.txt"
 
 log() { echo "[factory] $*"; }
 
+# GitHub App installation tokens expire after one hour. Long implementation and
+# review agents can cross that boundary, so renew the API token around every
+# long-running agent call instead of relying on the token created at job start.
+refresh_github_token() {
+  local refreshed_token
+  refreshed_token=$(node "$FACTORY_DIR/scripts/create-app-token.mjs")
+  echo "::add-mask::${refreshed_token}"
+  export GH_TOKEN="$refreshed_token"
+  log "Refreshed GitHub App token."
+}
+
 post_comment() {
   local body="$1"
   gh issue comment "$ISSUE_NUMBER" \
@@ -88,7 +99,18 @@ get_pr_for_issue() {
 run_claude() {
   local prompt_file="$1"
   local max_turns="${2:-$DEFAULT_AGENT_MAX_TURNS}"
+  local agent_status=0
 
-  ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
-    node "$FACTORY_DIR/scripts/run-claude.mjs" "$prompt_file" "$max_turns"
+  # Keep the App's private key and API token in the orchestration shell only;
+  # the coding agent does not need either credential to edit and test code.
+  (
+    unset APP_ID APP_PRIVATE_KEY GH_TOKEN GITHUB_TOKEN
+    ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+      node "$FACTORY_DIR/scripts/run-claude.mjs" "$prompt_file" "$max_turns"
+  ) || agent_status=$?
+
+  # The agent may have run for close to or beyond the token lifetime. Refresh
+  # before its caller posts comments, updates state, or starts another round.
+  refresh_github_token
+  return "$agent_status"
 }

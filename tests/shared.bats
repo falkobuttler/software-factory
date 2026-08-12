@@ -6,6 +6,31 @@ setup() {
   setup_shell_test
 }
 
+@test "refresh_github_token masks and exports the renewed token" {
+  cat > "$TEST_TMP/bin/node" <<'EOF'
+#!/usr/bin/env bash
+printf 'fresh-installation-token'
+EOF
+  chmod +x "$TEST_TMP/bin/node"
+  export FACTORY_DIR="$BATS_TEST_DIRNAME/.."
+
+  run bash -c "source '$BATS_TEST_DIRNAME/../scripts/shared.sh'; refresh_github_token; printf 'active=%s\\n' \"\$GH_TOKEN\""
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::add-mask::fresh-installation-token"* ]]
+  [[ "$output" == *"active=fresh-installation-token"* ]]
+}
+
+@test "run_claude refreshes GitHub authentication after the agent exits" {
+  grep -A20 -F 'run_claude() {' "$BATS_TEST_DIRNAME/../scripts/shared.sh" \
+    | grep -F 'refresh_github_token'
+}
+
+@test "run_claude does not expose GitHub App credentials to the coding agent" {
+  grep -A20 -F 'run_claude() {' "$BATS_TEST_DIRNAME/../scripts/shared.sh" \
+    | grep -F 'unset APP_ID APP_PRIVATE_KEY GH_TOKEN GITHUB_TOKEN'
+}
+
 @test "agent turn limits are centralized and the review cycle uses the review limit" {
   run bash -c "source '$BATS_TEST_DIRNAME/../scripts/shared.sh'; printf '%s %s' \"\$DEFAULT_AGENT_MAX_TURNS\" \"\$REVIEW_AGENT_MAX_TURNS\""
   [ "$status" -eq 0 ]

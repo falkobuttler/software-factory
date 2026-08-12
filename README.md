@@ -102,11 +102,12 @@ For repositories that run on a self-hosted machine, pass `runner: self-hosted`
 in the workflow's `with:` block. Git fetches and pushes use that runner's SSH
 authentication, so long-running jobs do not depend on the one-hour App token
 stored by checkout. The `gh` CLI continues to use the App token for GitHub API
-operations. GitHub-hosted jobs retain the checkout token because those runners
-have no durable local Git authentication. The target repository is checked out
-at the job workspace root. The factory runtime is downloaded as a GitHub Action
-under the runner's `_actions` directory, so it does not require a second
-checkout or appear inside the target worktree.
+operations; the factory renews that token before each stage and after every
+long-running agent call. GitHub-hosted jobs retain the checkout token because
+those runners have no durable local Git authentication. The target repository
+is checked out at the job workspace root. The factory runtime is downloaded as
+a GitHub Action under the runner's `_actions` directory, so it does not require
+a second checkout or appear inside the target worktree.
 
 ### 5. Use the factory
 

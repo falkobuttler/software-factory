@@ -8,6 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/state.sh"
 source "$SCRIPT_DIR/shared.sh"
 
+refresh_github_token
+
 # EVENT_PR_NUMBER is set explicitly by the target workflow for all PR events.
 pr_number="${EVENT_PR_NUMBER:-}"
 if [ -z "$pr_number" ] || [ "$pr_number" = "0" ]; then
