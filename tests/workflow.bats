@@ -3,6 +3,8 @@
 setup() {
   ROOT="$BATS_TEST_DIRNAME/.."
   DISPATCHER="$ROOT/.github/workflows/dispatcher.yml"
+  TRIAGE="$ROOT/.github/workflows/triage.yml"
+  TRIAGE_TEMPLATE="$ROOT/target-repo-template/.github/workflows/software-factory-triage.yml"
 }
 
 @test "dispatcher checks out only the target repository" {
@@ -25,4 +27,22 @@ setup() {
 @test "self-hosted authentication preserves the checkout origin" {
   grep -F 'git config --local url."git@github.com:".insteadOf "https://github.com/"' "$DISPATCHER"
   ! grep -F "git remote set-url origin" "$DISPATCHER"
+}
+
+@test "triage runs on the target repo without persisting credentials" {
+  run grep -cF "uses: actions/checkout@" "$TRIAGE"
+  [ "$status" -eq 0 ]
+  [ "$output" -eq 1 ]
+
+  grep -F 'repository: ${{ inputs.target_repo }}' "$TRIAGE"
+  grep -F "persist-credentials: false" "$TRIAGE"
+  grep -F "uses: falkobuttler/software-factory@main" "$TRIAGE"
+  grep -F 'scripts/triage.sh' "$TRIAGE"
+}
+
+@test "the triage template is scheduled and dispatchable" {
+  grep -F 'cron: "0 3 * * *"' "$TRIAGE_TEMPLATE"
+  grep -F "workflow_dispatch:" "$TRIAGE_TEMPLATE"
+  grep -F "workflows/triage.yml@main" "$TRIAGE_TEMPLATE"
+  grep -F 'target_repo: ${{ github.repository }}' "$TRIAGE_TEMPLATE"
 }
