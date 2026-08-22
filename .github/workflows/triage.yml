@@ -1,0 +1,78 @@
+name: Software Factory Triage
+
+# Called by target repos via workflow_call, normally on a nightly schedule.
+# Classifies untriaged open issues and posts blocking questions.
+# Independent of the label-driven implementation pipeline in dispatcher.yml.
+
+on:
+  workflow_call:
+    inputs:
+      target_repo:
+        description: "Target repository in owner/repo format"
+        type: string
+        required: true
+      max_issues:
+        description: "Maximum number of issues to triage in one run"
+        type: number
+        required: false
+        default: 10
+      runner:
+        description: "Runner label for the triage job (e.g. ubuntu-latest or self-hosted)"
+        type: string
+        required: false
+        default: "ubuntu-latest"
+    secrets:
+      APP_ID:
+        required: true
+      APP_PRIVATE_KEY:
+        required: true
+      ANTHROPIC_API_KEY:
+        required: true
+
+env:
+  TARGET_REPO: ${{ inputs.target_repo }}
+  MAX_TRIAGE_ISSUES: ${{ inputs.max_issues }}
+
+jobs:
+  triage:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    steps:
+      - name: Check out target repo (code to reason about)
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.target_repo }}
+          persist-credentials: false
+
+      # Referencing the factory as an action makes the runner download it under
+      # _actions, outside the target worktree, so triage needs no second checkout.
+      - name: Locate factory runtime (scripts + prompts)
+        id: factory-runtime
+        uses: falkobuttler/software-factory@main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Install factory dependencies
+        env:
+          FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
+        run: npm install --prefix "$FACTORY_DIR"
+
+      - name: Triage
+        id: triage
+        env:
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WORK_DIR: ${{ github.workspace }}
+          FACTORY_DIR: ${{ steps.factory-runtime.outputs.factory_dir }}
+        run: |
+          chmod +x "$FACTORY_DIR"/scripts/*.sh
+          bash "$FACTORY_DIR/scripts/triage.sh"
+
+      - name: Summarize
+        run: echo "Triaged ${{ steps.triage.outputs.triaged_count }} issue(s)." >> "$GITHUB_STEP_SUMMARY"

@@ -5,7 +5,13 @@
 MAX_REVIEW_ROUNDS="${MAX_REVIEW_ROUNDS:-3}"
 DEFAULT_AGENT_MAX_TURNS="${DEFAULT_AGENT_MAX_TURNS:-500}"
 REVIEW_AGENT_MAX_TURNS="${REVIEW_AGENT_MAX_TURNS:-100}"
+TRIAGE_AGENT_MAX_TURNS="${TRIAGE_AGENT_MAX_TURNS:-40}"
 BOT_LABEL="<!-- ai-factory-bot -->"
+# Marker label, deliberately not "ai:"-prefixed: set_state clears every "ai:"
+# label, and triage must survive the whole pipeline so issues are triaged once.
+TRIAGED_LABEL="ai-triaged"
+TRIAGE_TYPES=(bug enhancement documentation question chore)
+TRIAGE_SIZES=(XS S M L XL)
 CLAUDE_OUTPUT_FILE="/tmp/last-claude-output.txt"
 
 log() { echo "[factory] $*"; }
@@ -92,6 +98,75 @@ get_pr_for_issue() {
     --state open \
     --jq ".[] | select(.headRefName | startswith(\"ai/issue-${ISSUE_NUMBER}-\")) | .number" \
   2>/dev/null | head -1
+}
+
+# Open issues that have never been triaged and are not already in the pipeline.
+list_untriaged_issues() {
+  local limit="${1:-10}"
+  gh issue list \
+    --repo "$TARGET_REPO" \
+    --state open \
+    --limit "$limit" \
+    --search "-label:${TRIAGED_LABEL} -label:ai-factory sort:created-asc" \
+    --json number \
+    --jq '.[].number'
+}
+
+# Reads a "Field: value" line out of the agent's TRIAGE block.
+triage_field() {
+  local triage="$1"
+  local field="$2"
+  echo "$triage" | sed -n "s/^${field}:[[:space:]]*//p" | head -1
+}
+
+# Everything under "Questions:" as a markdown list, or empty when there are none.
+triage_questions() {
+  local triage="$1"
+  local questions
+  questions=$(echo "$triage" | sed -n '/^Questions:/,$p' | sed '1d' | grep -E '^[[:space:]]*-' || true)
+  if [ "$(triage_field "$triage" "Questions" | tr '[:upper:]' '[:lower:]')" = "none" ]; then
+    return 0
+  fi
+  echo "$questions"
+}
+
+is_valid_triage_type() {
+  local candidate="$1"
+  local value
+  for value in "${TRIAGE_TYPES[@]}"; do
+    [ "$candidate" = "$value" ] && return 0
+  done
+  return 1
+}
+
+is_valid_triage_size() {
+  local candidate="$1"
+  local value
+  for value in "${TRIAGE_SIZES[@]}"; do
+    [ "$candidate" = "$value" ] && return 0
+  done
+  return 1
+}
+
+apply_triage_labels() {
+  local issue_type="$1"
+  local issue_size="$2"
+  gh label create "$issue_type" --repo "$TARGET_REPO" --color "d4c5f9" --force >/dev/null 2>&1 || true
+  gh label create "size:${issue_size}" --repo "$TARGET_REPO" --color "c2e0c6" --force >/dev/null 2>&1 || true
+  # A re-triaged issue must not keep a stale size, so drop the other size labels.
+  local value
+  for value in "${TRIAGE_SIZES[@]}"; do
+    [ "$value" = "$issue_size" ] && continue
+    gh issue edit "$ISSUE_NUMBER" --repo "$TARGET_REPO" --remove-label "size:${value}" >/dev/null 2>&1 || true
+  done
+  gh issue edit "$ISSUE_NUMBER" \
+    --repo "$TARGET_REPO" \
+    --add-label "${issue_type},size:${issue_size}"
+}
+
+mark_triaged() {
+  gh label create "$TRIAGED_LABEL" --repo "$TARGET_REPO" --color "ededed" --force >/dev/null 2>&1 || true
+  gh issue edit "$ISSUE_NUMBER" --repo "$TARGET_REPO" --add-label "$TRIAGED_LABEL"
 }
 
 # Run the Claude Code agent with real-time streaming output.

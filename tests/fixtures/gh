@@ -36,7 +36,12 @@ case "$args" in
       esac
     done <<< "${GH_STUB_PR_LINES:-${GH_STUB_PR_NUMBER:-}}"
     ;;
+  issue\ list*)
+    printf '%s\n' "${GH_STUB_ISSUE_LIST:-}"
+    ;;
   issue\ edit*)
+    ;;
+  issue\ comment*)
     ;;
   pr\ edit*)
     ;;

@@ -109,7 +109,36 @@ is checked out at the job workspace root. The factory runtime is downloaded as
 a GitHub Action under the runner's `_actions` directory, so it does not require
 a second checkout or appear inside the target worktree.
 
-### 5. Use the factory
+### 5. Optional: nightly issue triage
+
+The triage automation classifies new issues before anyone decides to implement
+them. It runs on a schedule, independently of the implementation pipeline.
+
+**a)** Copy the triage template into the target repo:
+```bash
+cp path/to/software-factory/target-repo-template/.github/workflows/software-factory-triage.yml \
+   .github/workflows/software-factory-triage.yml
+```
+
+**b)** Replace `YOUR_ORG/software-factory` with this repo's path, and adjust the
+`cron` schedule if 03:00 UTC does not suit you.
+
+On each run the agent picks up open issues that carry neither `ai-triaged` nor
+`ai-factory` (oldest first, 10 per run by default) and for each one:
+
+- reads the issue and enough of the codebase to classify it;
+- applies a type label (`bug`, `enhancement`, `documentation`, `question`,
+  `chore`) and a size label (`size:XS` … `size:XL`);
+- posts a comment with a one-line summary plus any questions that block
+  implementation;
+- adds `ai-triaged` so the issue is never triaged twice.
+
+Triage is read-only: it never branches, commits, or opens PRs. Adding the
+`ai-factory` label afterwards starts the implementation pipeline as usual. Run it
+on demand from the Actions tab (**Run workflow**), where `max_issues` caps the
+batch size.
+
+### 6. Use the factory
 
 Add the **`ai-factory`** label to any issue. The pipeline starts automatically.
 
@@ -117,6 +146,8 @@ Add the **`ai-factory`** label to any issue. The pipeline starts automatically.
 | Label | Meaning |
 |---|---|
 | `ai-factory` | Trigger label — add this to start the pipeline |
+| `ai-triaged` | Issue has been triaged; excluded from future triage runs |
+| `size:XS`…`size:XL` | Implementation effort estimated by triage |
 | `ai:planning` | Agent is planning the work |
 | `ai:questioning` | Agent has questions; waiting for answers |
 | `ai:implementing` | Agent is writing code |
@@ -138,12 +169,15 @@ software-factory/
 ├── action.yml                         # Makes the runtime available without a checkout
 ├── .github/
 │   └── workflows/
-│       └── dispatcher.yml          # Main reusable workflow (called by target repos)
+│       ├── dispatcher.yml          # Main reusable workflow (called by target repos)
+│       └── triage.yml              # Scheduled issue-triage workflow
 ├── prompts/
+│   ├── triager.md                  # System prompt for the triage agent
 │   ├── planner.md                  # System prompt for the planning agent
 │   ├── implementer.md              # System prompt for the implementation agent
 │   └── reviewer.md                 # System prompt for the review agent
 ├── scripts/
+│   ├── triage.sh                   # Scheduled triage of untriaged open issues
 │   ├── route.sh                    # Chooses the stage for the current event/state
 │   ├── plan.sh                     # Planning stage
 │   ├── implement.sh                # Implementation stage
@@ -155,12 +189,14 @@ software-factory/
 └── target-repo-template/
     └── .github/
         └── workflows/
-            └── software-factory.yml  # Copy this into each target repo
+            ├── software-factory.yml         # Copy this into each target repo
+            └── software-factory-triage.yml  # Optional nightly triage schedule
 ```
 
 ## Customizing agent behavior
 
 Edit the files in `prompts/` to change how each agent thinks:
+- **`prompts/triager.md`** — classification vocabulary, size scale, what blocks implementation
 - **`prompts/planner.md`** — how the agent plans work, what questions to ask
 - **`prompts/implementer.md`** — coding standards, when to give up, output format
 - **`prompts/reviewer.md`** — review criteria, what counts as a blocking issue
